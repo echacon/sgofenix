@@ -1,0 +1,52 @@
+# config/07_conectividad.yaml
+
+conexiones_fisicas:
+  # Dispersores → Tanques pulmón
+  - origen: "DISP_PRIN_01"
+    destino: "TANQ_PULMON_5000L"
+    tipo: "TUBERIA_BOMBA"
+    diametro_pulgadas: 3
+    flujo_maximo_lps: 15.0
+    perdida_material_pct: 0.005
+    requiere_bombeo: true
+  
+  - origen: "DISP_SEC_01"
+    destino: "TANQ_PULMON_2000L"
+    tipo: "TUBERIA_BOMBA"
+    diametro_pulgadas: 2
+    flujo_maximo_lps: 8.0
+    perdida_material_pct: 0.003
+    requiere_bombeo: true
+  
+  # Tanques pulmón → Diluidores
+  - origen: "TANQ_PULMON_5000L"
+    destino: "TANQ_DIL_5000"
+    tipo: "TUBERIA_GRAVEDAD"
+    diametro_pulgadas: 4
+    flujo_maximo_lps: 25.0
+    perdida_material_pct: 0.0
+    requiere_bombeo: false
+  
+  - origen: "TANQ_PULMON_2000L"
+    destino: "TANQ_DIL_2000"
+    tipo: "TUBERIA_GRAVEDAD"
+    diametro_pulgadas: 3
+    flujo_maximo_lps: 18.0
+    perdida_material_pct: 0.0
+    requiere_bombeo: false
+  
+  # Conexiones manuales (operario mueve el material)
+  - origen: "DISP_SEC_01"
+    destino: "TANQ_MUESTRAS"
+    tipo: "MANUAL"
+    perdida_material_pct: 0.05
+    requiere_operador: true
+  
+  # Transferencias directas entre dispersor y diluidor (sin pulmón)
+  - origen: "DISP_PRIN_01"
+    destino: "TANQ_DIL_5000"
+    tipo: "TUBERIA_BOMBA"
+    diametro_pulgadas: 3
+    flujo_maximo_lps: 12.0
+    perdida_material_pct: 0.01
+    requiere_bombeo: true

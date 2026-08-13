@@ -1,0 +1,19 @@
+# ============================================================
+# TIPOS DE OPERACIÓN
+# ============================================================
+
+tipos_operacion:
+  - nombre: "DIS"
+    descripcion: "Dispersión - Mezcla inicial de alta velocidad para formar pasta"
+  
+  - nombre: "MOL"
+    descripcion: "Molienda - Reducción del tamaño de partícula de pigmentos"
+  
+  - nombre: "DIL"
+    descripcion: "Dilución/Ajuste - Llevar a viscosidad y color final"
+  
+  - nombre: "DIS2"
+    descripcion: "Segunda Dispersión - Redispersión de pasta ya molida"
+  
+  - nombre: "DIS_BAJA"
+    descripcion: "Dispersión baja velocidad - Para incorporar texturizantes sin romperlos"

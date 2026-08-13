@@ -1,0 +1,74 @@
+nombre: Encadenamiento_DIS_DIL
+red_principal: DIS_DIL_integradora   # o DIS_DIL_integradora, según cómo se nombre la red en BD
+reglas:
+  "DIS_DIL_dispersion.t1":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Iniciar disp
+  "DIS_DIL_dispersion.t41":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Fin dispersion
+  "DIS_DIL_dispersion.t42":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Fin/liberar disp
+  "DIS_DIL_dispersion.t6":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Fin/liberar disp
+  "DIS_DIL_dispersion.t2":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Iniciar carga
+  "DIS_DIL_dispersion.t11":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Descartar
+  "DIS_DIL_dispersion.t45":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Liberar dispersador
+  "DIS_DIL_dilucion.t1":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Iniciar diluidor
+  "DIS_DIL_dilucion.t14":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Diluidor ok
+  "DIS_DIL_dilucion.t20":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Fin carga
+  "DIS_DIL_dilucion.t3":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Almacenar
+  "DIS_DIL_dilucion.t4":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Fin almacenar
+  "DIS_DIL_dilucion.t24":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Fin almacenar
+  "DIS_DIL_dilucion.t2":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Envasar
+  "DIS_DIL_dilucion.t34":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Fin Envasar
+  "DIS_DIL_dilucion.t25":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Fin Envasar
+  "DIS_DIL_dilucion.t37":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Descartar
+  "DIS_DIL_dilucion.t18":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Fin descarte
+  "DIS_DIL_dilucion.t31":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Liberar Diluidor
+  "DIS_DIL_dilucion.t40":
+    - red_destino: DIS_DIL_integradora
+      evento_destino: Liberar Diluidor
+  "DIS_DIL_integradora.t11":
+    - red_destino: DIS_DIL_dilucion
+      evento_destino: Descarte
+  "DIS_DIL_integradora.t6":
+    - red_destino: DIS_DIL_dispersion
+      evento_destino: Diluidor listo
+
+
+ 
+
+

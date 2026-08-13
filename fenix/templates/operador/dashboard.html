@@ -1,0 +1,431 @@
+<!-- templates/operador/dashboard.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">🏭 Panel del Operador - FENIX LITE</h1>
+    
+    <!-- Barra de herramientas -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nuevaOrdenModal">
+                ➕ Nueva Orden
+            </button>
+            <button class="btn btn-secondary" onclick="cargarOrdenes()">
+                🔄 Refrescar
+            </button>
+        </div>
+        <div class="col-md-6">
+            <div class="alert alert-info" id="statusAlert" style="display: none;">
+                <span id="statusMessage"></span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Órdenes Activas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    📋 Órdenes Activas
+                </div>
+                <div class="card-body" id="ordenesContainer">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando órdenes activas...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para Nueva Orden -->
+    <div class="modal fade" id="nuevaOrdenModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">➕ Nueva Orden de Producción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="nuevaOrdenForm">
+                        <div class="mb-3">
+                            <label class="form-label">Holon Ruta ID</label>
+                            <input type="number" class="form-control" name="holon_ruta_id" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Cantidad (kg/L)</label>
+                            <input type="number" class="form-control" name="cantidad" step="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Plazo de Entrega</label>
+                            <input type="datetime-local" class="form-control" name="plazo_entrega" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Red PNML</label>
+                            <select class="form-control" name="red_pnml" required>
+                                <option value="Pintuco_BaseAgua_Dis_Dil_IntegracionRedes_V4.pnml">
+                                    Integración Redes V4
+                                </option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="crearOrden()">Crear Orden</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para Disparar Transición -->
+    <div class="modal fade" id="dispararModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">⚡ Disparar Transición</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="dispararForm">
+                        <input type="hidden" name="instancia_id" id="dispararInstanciaId">
+                        <input type="hidden" name="transicion_id" id="dispararTransicionId">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Transición</label>
+                            <input type="text" class="form-control" id="dispararTransicionNombre" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">📝 Invariantes (datos del proceso)</label>
+                            <textarea class="form-control" id="invariantes" rows="3" 
+                                placeholder='{"temperatura": 25.5, "operario": "Juan", "lote": "L001"}'></textarea>
+                            <small class="text-muted">Ingresar JSON con datos capturados</small>
+                        </div>
+                        
+                        <div class="alert alert-warning" id="dispararPreview">
+                            <!-- Preview del token antes/después -->
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="ejecutarDisparo()">
+                        🚀 Disparar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Cargar órdenes al iniciar
+    document.addEventListener('DOMContentLoaded', function() {
+        cargarOrdenes();
+        // Refrescar cada 10 segundos
+        setInterval(cargarOrdenes, 10000);
+    });
+    
+    function cargarOrdenes() {
+        fetch('/operador/api/ordenes_activas')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderizarOrdenes(data.ordenes);
+                } else {
+                    mostrarError(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarError('Error al cargar órdenes');
+            });
+    }
+    
+    function renderizarOrdenes(ordenes) {
+        const container = document.getElementById('ordenesContainer');
+        
+        if (ordenes.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-info-circle"></i> No hay órdenes activas en este momento.
+                    <br>Use el botón "Nueva Orden" para iniciar producción.
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        for (const orden of ordenes) {
+            html += `
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <strong>📦 Orden #${orden.id}</strong> - ${orden.producto_nombre}
+                        <span class="badge ${orden.estado === 'en_proceso' ? 'bg-success' : 'bg-warning'} float-end">
+                            ${orden.estado}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <small class="text-muted">Cantidad:</small>
+                                <strong>${orden.cantidad.toLocaleString()} kg</strong><br>
+                                <small class="text-muted">Plazo:</small>
+                                ${new Date(orden.plazo_entrega).toLocaleString()}
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted">Material procesado:</small>
+                                <strong>${orden.instancias[0]?.token_m?.toLocaleString() || 0} kg</strong><br>
+                                <small class="text-muted">Coste acumulado:</small>
+                                <strong>$${orden.instancias[0]?.token_c?.toFixed(2) || 0}</strong>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted">Instancias activas:</small>
+                                <strong>${orden.instancias_activas}</strong>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h6>📊 Instancias en ejecución:</h6>
+                        ${orden.instancias.map(inst => `
+                            <div class="border rounded p-2 mb-2">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <strong>${inst.tipo === 'padre' ? '🏭 Red Principal' : '🔧 Subproceso'}</strong>
+                                        <br>
+                                        <small class="text-muted">ID: ${inst.id}</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Marcado:</small>
+                                        <code>${JSON.stringify(inst.marcado)}</code>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-sm btn-primary w-100" 
+                                            onclick="verTransiciones(${inst.id})">
+                                            ⚡ Ver acciones disponibles
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+    }
+    
+    function verTransiciones(instanciaId) {
+        fetch(`/operador/api/instancia/${instanciaId}/transiciones`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.transiciones.length > 0) {
+                    mostrarSelectorTransiciones(instanciaId, data.transiciones);
+                } else {
+                    mostrarError('No hay transiciones habilitadas en este momento');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarError('Error al obtener transiciones');
+            });
+    }
+    
+    function mostrarSelectorTransiciones(instanciaId, transiciones) {
+        // Crear modal dinámico para seleccionar transición
+        let modalHtml = `
+            <div class="modal fade" id="selectorTransicionesModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">⚡ Seleccionar Transición</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Instancia ID: ${instanciaId}</p>
+                            <div class="list-group">
+        `;
+        
+        for (const trans of transiciones) {
+            modalHtml += `
+                <button class="list-group-item list-group-item-action" 
+                    onclick="prepararDisparo(${instanciaId}, '${trans.id}', '${trans.nombre}')">
+                    <strong>⚡ ${trans.nombre}</strong>
+                    <small class="text-muted">(${trans.id})</small>
+                </button>
+            `;
+        }
+        
+        modalHtml += `
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remover modal existente si hay
+        const existingModal = document.getElementById('selectorTransicionesModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        const modal = new bootstrap.Modal(document.getElementById('selectorTransicionesModal'));
+        modal.show();
+        
+        // Limpiar al cerrar
+        document.getElementById('selectorTransicionesModal').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+    }
+    
+    function prepararDisparo(instanciaId, transicionId, transicionNombre) {
+        // Cerrar modal de selección
+        const selectorModal = bootstrap.Modal.getInstance(document.getElementById('selectorTransicionesModal'));
+        if (selectorModal) selectorModal.hide();
+        
+        // Abrir modal de disparo
+        document.getElementById('dispararInstanciaId').value = instanciaId;
+        document.getElementById('dispararTransicionId').value = transicionId;
+        document.getElementById('dispararTransicionNombre').value = transicionNombre;
+        document.getElementById('invariantes').value = '{}';
+        
+        // Cargar preview del estado actual
+        cargarPreviewEstado(instanciaId);
+        
+        const modal = new bootstrap.Modal(document.getElementById('dispararModal'));
+        modal.show();
+    }
+    
+    function cargarPreviewEstado(instanciaId) {
+        fetch(`/operador/api/instancia/${instanciaId}/estado`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.estado) {
+                    const estado = data.estado;
+                    const preview = document.getElementById('dispararPreview');
+                    preview.innerHTML = `
+                        <strong>Estado actual:</strong><br>
+                        Material: ${estado.token_m?.toLocaleString() || 0} kg<br>
+                        Coste: $${estado.token_c?.toFixed(2) || 0}<br>
+                        Marcado: <code>${JSON.stringify(estado.marcado)}</code>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+    
+    function ejecutarDisparo() {
+        const instanciaId = document.getElementById('dispararInstanciaId').value;
+        const transicionId = document.getElementById('dispararTransicionId').value;
+        let invariantes = {};
+        
+        try {
+            const invariantesText = document.getElementById('invariantes').value;
+            invariantes = JSON.parse(invariantesText);
+        } catch(e) {
+            mostrarError('Invariantes no es JSON válido. Usando {}');
+        }
+        
+        fetch('/operador/api/disparar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                instancia_id: parseInt(instanciaId),
+                transicion_id: transicionId,
+                invariantes: invariantes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('dispararModal'));
+            modal.hide();
+            
+            if (data.success) {
+                mostrarExito(data.mensaje);
+                cargarOrdenes();  // Recargar
+            } else {
+                mostrarError(data.mensaje || 'Error al disparar');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error al ejecutar disparo');
+        });
+    }
+    
+    function crearOrden() {
+        const form = document.getElementById('nuevaOrdenForm');
+        const formData = new FormData(form);
+        
+        const data = {
+            holon_ruta_id: parseInt(formData.get('holon_ruta_id')),
+            cantidad: parseFloat(formData.get('cantidad')),
+            plazo_entrega: formData.get('plazo_entrega'),
+            red_pnml: formData.get('red_pnml')
+        };
+        
+        fetch('/operador/api/crear_orden', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('nuevaOrdenModal'));
+            modal.hide();
+            
+            if (data.success) {
+                mostrarExito(data.mensaje);
+                cargarOrdenes();
+                form.reset();
+            } else {
+                mostrarError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error al crear orden');
+        });
+    }
+    
+    function mostrarExito(mensaje) {
+        const alert = document.getElementById('statusAlert');
+        const span = document.getElementById('statusMessage');
+        alert.className = 'alert alert-success';
+        span.innerText = mensaje;
+        alert.style.display = 'block';
+        setTimeout(() => {
+            alert.style.display = 'none';
+        }, 3000);
+    }
+    
+    function mostrarError(mensaje) {
+        const alert = document.getElementById('statusAlert');
+        const span = document.getElementById('statusMessage');
+        alert.className = 'alert alert-danger';
+        span.innerText = mensaje;
+        alert.style.display = 'block';
+        setTimeout(() => {
+            alert.style.display = 'none';
+        }, 5000);
+    }
+</script>
+{% endblock %}

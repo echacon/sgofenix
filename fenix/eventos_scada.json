@@ -1,0 +1,54 @@
+{
+  "orden_1": [
+    {
+      "red": "dispersion",
+      "transicion": "t1",
+      "datos": {}
+    },
+    {
+      "red": "dispersion",
+      "transicion": "t41",
+      "datos": {}
+    },
+    {
+      "red": "dispersion",
+      "transicion": "t2",
+      "datos": {}
+    },
+    {
+      "red": "dilucion",
+      "transicion": "t14",
+      "datos": {}
+    },
+    {
+      "red": "dilucion",
+      "transicion": "t20",
+      "datos": {}
+    },
+    {
+      "red": "dilucion",
+      "transicion": "t3",
+      "datos": {}
+    },
+    {
+      "red": "dilucion",
+      "transicion": "t4",
+      "datos": {}
+    },
+    {
+      "red": "dilucion",
+      "transicion": "t2",
+      "datos": {}
+    },
+    {
+      "red": "dilucion",
+      "transicion": "t34",
+      "datos": {}
+    },
+    {
+      "red": "dilucion",
+      "transicion": "t31",
+      "datos": {}
+    }
+  ]
+}

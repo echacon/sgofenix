@@ -1,0 +1,223 @@
+{
+  "nombre": "Secuencia Exitosa - LAT-1000",
+  "descripcion": "Producción normal sin fallos",
+  "ultimo_evento_procesado": 0,
+  "eventos": [
+    {
+      "id": 1,
+      "orden_id": 1,
+      "red": "DIS_DIL_dispersion",
+      "transicion": "Asignar equipo",
+      "recurso": "DISP_SEC_01",
+      "timestamp": "2026-05-13T09:00:00",
+      "procesado": false
+    },
+    {
+      "id": 2,
+      "orden_id": 1,
+      "red": "DIS_DIL_dispersion",
+      "transicion": "Cargar auto",
+      "recurso": "DISP_SEC_01",
+      "timestamp": "2026-05-13T09:05:00",
+      "procesado": false
+    },
+    {
+      "id": 3,
+      "orden_id": 1,
+      "red": "DIS_DIL_dispersion",
+      "transicion": "Tolva",
+      "recurso": "DISP_SEC_01",
+      "timestamp": "2026-05-13T09:10:00",
+      "procesado": false
+    },
+    {
+      "id": 4,
+      "orden_id": 1,
+      "red": "DIS_DIL_dispersion",
+      "transicion": "Fin solidos",
+      "recurso": "DISP_SEC_01",
+      "timestamp": "2026-05-13T09:20:00",
+      "procesado": false
+    },
+    {
+      "id": 5,
+      "orden_id": 1,
+      "red": "DIS_DIL_dispersion",
+      "transicion": "Chequeo",
+      "recurso": "DISP_SEC_01",
+      "timestamp": "2026-05-13T10:00:00",
+      "procesado": false
+    },
+    {
+      "id": 6,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Asignar equipo",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T10:00:00",
+      "procesado": false
+    },
+    {
+      "id": 7,
+      "orden_id": 1,
+      "red": "DIS_DIL_dispersion",
+      "transicion": "Chequeando",
+      "recurso": "DISP_SEC_01",
+      "timestamp": "2026-05-13T10:05:00",
+      "procesado": false
+    },
+    {
+      "id": 8,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Carga auto",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T10:06:00",
+      "procesado": false
+    },
+    {
+      "id": 9,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Fin pigable",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T10:30:00",
+      "procesado": false
+    },
+    {
+      "id": 10,
+      "orden_id": 1,
+      "red": "DIS_DIL_dispersion",
+      "transicion": "Transportar",
+      "recurso": "DISP_SEC_01",
+      "timestamp": "2026-05-13T10:32:00",
+      "procesado": false
+    },
+    {
+      "id": 11,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Recibir dispersion",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T10:40:00",
+      "procesado": false
+    },
+    {
+      "id": 12,
+      "orden_id": 1,
+      "red": "DIS_DIL_dispersion",
+      "transicion": "Transportando",
+      "recurso": "DISP_SEC_01",
+      "timestamp": "2026-05-13T10:45:00",
+      "procesado": false
+    },
+    {
+      "id": 13,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Fin carga",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T11:00:00",
+      "procesado": false
+    },
+        {
+      "id": 14,
+      "orden_id": 1,
+      "red": "DIS_DIL_dispersion",
+      "transicion": "Libre",
+      "recurso": "DISP_SEC_01",
+      "timestamp": "2026-05-13T11:01:00",
+      "procesado": false
+    },
+    {
+      "id": 15,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Chequeo",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T12:45:00",
+      "procesado": false
+    },
+    {
+      "id": 16,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Chequeando",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T12:50:00",
+      "procesado": false
+    },
+    {
+      "id": 17,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "A tinturar",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T12:55:00",
+      "procesado": false
+    },
+    {
+      "id": 18,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Tinturacion",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T13:45:00",
+      "procesado": false
+    },
+    {
+      "id": 19,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Para ajuste",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T14:45:00",
+      "procesado": false
+    },
+    {
+      "id": 20,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Ajustando",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T14:50:00",
+      "procesado": false
+    },
+    {
+      "id": 21,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Chequeo",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T15:05:00",
+      "procesado": false
+    },
+    {
+      "id": 22,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Chequeando",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T15:10:00",
+      "procesado": false
+    },
+    {
+      "id": 23,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Intermedio",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T15:15:00",
+      "procesado": false
+    },
+    {
+      "id": 24,
+      "orden_id": 1,
+      "red": "DIS_DIL_dilucion",
+      "transicion": "Libre",
+      "recurso": "TANQ_DIL_2000",
+      "timestamp": "2026-05-13T15:50:00",
+      "procesado": false
+    }
+  ]
+}

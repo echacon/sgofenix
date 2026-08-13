@@ -1,0 +1,57 @@
+<!-- templates/carga_errores.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>📋 Resultado de la carga: {{ tipo }}</h1>
+    
+    {% if errores %}
+    <div class="alert alert-danger">
+        <strong>❌ Se encontraron {{ errores|length }} errores</strong>
+    </div>
+    
+    <div class="card mt-3">
+        <div class="card-header bg-warning">
+            <strong>💡 Sugerencia:</strong> Revise el archivo Excel y corrija las siguientes líneas:
+        </div>
+        <div class="card-body">
+            {% for error in errores %}
+            <div class="error-line">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <a href="{{ url_for('carga_recursos.cargar_recursos') }}" class="btn btn-primary mt-3">
+        ← Volver a cargar el archivo corregido
+    </a>
+    {% endif %}
+    
+    {% if advertencias %}
+    <div class="alert alert-warning mt-3">
+        <strong>⚠️ Advertencias:</strong>
+        <ul>
+            {% for adv in advertencias %}
+            <li>{{ adv }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    {% if not errores and not advertencias %}
+    <div class="alert alert-success">
+        <strong>✅ Carga exitosa</strong>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-success">← Ir al inicio</a>
+    {% endif %}
+</div>
+
+<style>
+    .error-line {
+        background-color: #ffebee;
+        border-left: 4px solid #f44336;
+        padding: 8px;
+        margin: 5px 0;
+        font-family: monospace;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,135 @@
+# ============================================================
+# PRODUCTOS ESPECÍFICOS
+# ============================================================
+
+productos:
+  - codigo: "TPL_LATEX"
+    nombre: "Plantilla Ruta Látex"
+    familia: "Látex"
+    patron: "DIS-DIL"
+    es_fabricado: true
+    es_final: false   # No es un producto vendible
+
+    rutas:
+      - nombre: "Desde Cero"
+        condiciones:
+          lote_minimo_kg: 0
+          lote_maximo_kg: 10000
+          prioridad_minima: 1
+          tipo_ruta: "normal"
+          orden_preferencia: 2
+          requiere_inventario: null
+
+  - codigo: "PINT-BLANCA-001"
+    nombre: "Pintura Blanca Base Agua"
+    familia: "Látex"
+    patron: "DIS-DIL"
+    
+    rutas:
+      - nombre: "Desde Cero"
+        condiciones:
+          lote_minimo_kg: 0
+          lote_maximo_kg: 10000
+          prioridad_minima: 1
+          tipo_ruta: "normal"
+          orden_preferencia: 2
+          requiere_inventario: null
+      
+      - nombre: "Con Pasta Base"
+        condiciones:
+          lote_minimo_kg: 100
+          lote_maximo_kg: 5000
+          prioridad_minima: 1
+          tipo_ruta: "economica"
+          orden_preferencia: 1
+          requiere_inventario:
+            tipo: "pasta_base"
+            cantidad_minima_kg: 100
+      
+      - nombre: "Express"
+        condiciones:
+          lote_minimo_kg: 0
+          lote_maximo_kg: 1000
+          prioridad_minima: 2
+          tipo_ruta: "express"
+          orden_preferencia: 3
+  
+  - codigo: "LAT-1000"
+    nombre: "Látex Brillante Interior"
+    familia: "Látex"
+    patron: "DIS-DIL"
+    
+    # Múltiples rutas para el mismo producto
+    rutas:
+      - nombre: "Producción Estándar"
+        tipo: "normal"
+        lote_minimo_kg: 0
+        lote_maximo_kg: 5000
+        prioridad_minima: 1
+        orden_preferencia: 1
+        
+        asignaciones:
+          DIS:
+            recurso: "DISP_PRIN_01"
+            duracion_estimada_min: 45
+          DIL:
+            recurso: "TANQ_DIL_5000"
+            duracion_estimada_min: 30
+      
+      - nombre: "Lote Pequeño"
+        tipo: "economica"
+        lote_minimo_kg: 0
+        lote_maximo_kg: 500
+        prioridad_minima: 1
+        orden_preferencia: 2
+        
+        asignaciones:
+          DIS:
+            recurso: "DISP_SEC_01"
+            duracion_estimada_min: 30
+          DIL:
+            recurso: "TANQ_DIL_2000"
+            duracion_estimada_min: 20
+  
+  - codigo: "ESM-500"
+    nombre: "Esmalte Brillante Blanco"
+    familia: "Esmalte Sintético"
+    patron: "DIS-MOL-DIL"
+    
+    rutas:
+      - nombre: "Calidad Premium"
+        tipo: "premium"
+        lote_minimo_kg: 0
+        lote_maximo_kg: 1000
+        prioridad_minima: 1
+        orden_preferencia: 1
+        
+        asignaciones:
+          DIS:
+            recurso: "DISP_PRIN_01"
+            duracion_estimada_min: 30
+          MOL:
+            recurso: "MOL_BOLAS_01"
+            duracion_estimada_min: 120
+          DIL:
+            recurso: "TANQ_DIL_5000"
+            duracion_estimada_min: 45
+      
+      - nombre: "Calidad Estándar"
+        tipo: "normal"
+        lote_minimo_kg: 0
+        lote_maximo_kg: 2000
+        prioridad_minima: 1
+        orden_preferencia: 2
+        
+        asignaciones:
+          DIS:
+            recurso: "DISP_SEC_01"
+            duracion_estimada_min: 25
+          MOL:
+            recurso: "MOL_VERT_01"
+            duracion_estimada_min: 90
+          DIL:
+            recurso: "TANQ_DIL_2000"
+            duracion_estimada_min: 30
+  

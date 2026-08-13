@@ -1,0 +1,12 @@
+etapas:
+  - codigo: "DIS"
+    recurso_codigo: "DISP_PRIN_01"      # Dispersor principal
+    operador_codigo: "OP_DISP_T1"       # Operador de dispersión
+    duracion_estimada_min: 45
+    capacidad_maxima_litros: 2000
+
+  - codigo: "DIL"
+    recurso_codigo: "TANQ_DIL_5000"     # Tanque de dilución grande
+    operador_codigo: "OP_DIL_T1"        # Operador de dilución
+    duracion_estimada_min: 30
+    capacidad_maxima_litros: 5000

@@ -1,0 +1,57 @@
+# ============================================================
+# FÉNIX - sgo Repository .gitignore
+# ============================================================
+
+# ----- Base de datos -----
+*.db
+*.sqlite
+*.sqlite3
+fenix/fenix.db
+
+# ----- Logs -----
+*.log
+logs/
+fenix.log
+fenix/logs/
+
+# ----- Python -----
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# ----- Entornos virtuales -----
+.venv/
+venv/
+env/
+ENV/
+
+# ----- Variables de entorno -----
+.env
+.env.local
+.env.*.local
+
+# ----- IDEs y Editores -----
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+*.sqbpro
+
+# ----- Testing -----
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ----- Archivos temporales -----
+*.tmp
+*.temp
+tmp/

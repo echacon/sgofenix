@@ -1,0 +1,352 @@
+nombre: Proceso generado desde DIS_MOL_DIL_Dilucion.pnml
+categoria_recurso: DISPERSOR_ALTA
+pasos:
+- id: p1
+  nombre: Esperando lavado
+  duracion: 10 m
+  velocidad: media
+- id: p2
+  nombre: Lavando
+  duracion: 10 m
+  velocidad: media
+- id: p3
+  nombre: Esperando molinos
+  duracion: 10 m
+  velocidad: media
+- id: p4
+  nombre: Tinturando
+  duracion: 10 m
+  velocidad: media
+- id: p5
+  nombre: Esperando ajustes
+  duracion: 10 m
+  velocidad: media
+- id: p6
+  nombre: Esperando ajustes
+  duracion: 10 m
+  velocidad: media
+- id: p7
+  nombre: Esperando descarga
+  duracion: 10 m
+  velocidad: media
+- id: p8
+  nombre: Cargando manual
+  duracion: 10 m
+  velocidad: media
+- id: p9
+  nombre: Ajustando
+  duracion: 10 m
+  velocidad: media
+- id: p10
+  nombre: Chequeando lab
+  duracion: 10 m
+  velocidad: media
+- id: p11
+  nombre: Esperando envasado
+  duracion: 10 m
+  velocidad: media
+- id: p12
+  nombre: Espera por carga
+  duracion: 10 m
+  velocidad: media
+- id: p13
+  nombre: Preparando tinturacion
+  duracion: 10 m
+  velocidad: media
+- id: p14
+  nombre: Libre
+  duracion: 10 m
+  velocidad: media
+- id: p15
+  nombre: En formulacion
+  duracion: 10 m
+  velocidad: media
+- id: p16
+  nombre: Envasando
+  duracion: 10 m
+  velocidad: media
+- id: p17
+  nombre: Cargando de molinos
+  duracion: 10 m
+  velocidad: media
+- id: p18
+  nombre: Dilucion
+  duracion: 10 m
+  velocidad: media
+- id: p19
+  nombre: Prod. no conforme
+  duracion: 10 m
+  velocidad: media
+- id: p20
+  nombre: Esperando muestra
+  duracion: 10 m
+  velocidad: media
+- id: p21
+  nombre: Descartando
+  duracion: 10 m
+  velocidad: media
+- id: p22
+  nombre: Descargando
+  duracion: 10 m
+  velocidad: media
+- id: p23
+  nombre: Producto
+  duracion: 10 m
+  velocidad: media
+- id: p24
+  nombre: Desperdicio
+  duracion: 10 m
+  velocidad: media
+- id: p25
+  nombre: Producto envasado
+  duracion: 10 m
+  velocidad: media
+- id: p28
+  nombre: Esperando agregados
+  duracion: 10 m
+  velocidad: media
+- id: p31
+  nombre: Bombeos automaticos
+  duracion: 10 m
+  velocidad: media
+transiciones:
+- id: t1
+  trigger: Molinos listo
+  tipo: 201
+  origen:
+  - p3
+  destino:
+  - p12
+- id: t2
+  trigger: Envasar
+  tipo: 200
+  origen:
+  - p10
+  destino:
+  - p11
+- id: t3
+  trigger: Lavando
+  tipo: 200
+  origen:
+  - p1
+  destino:
+  - p2
+- id: t4
+  trigger: Libre
+  tipo: 200
+  origen:
+  - p2
+  destino: []
+- id: t5
+  trigger: Chequeando
+  tipo: 200
+  origen:
+  - p20
+  destino:
+  - p10
+- id: t6
+  trigger: Para ajuste
+  tipo: 200
+  origen:
+  - p10
+  destino:
+  - p6
+- id: t7
+  trigger: Tinturacion
+  tipo: 200
+  origen:
+  - p13
+  destino:
+  - p4
+- id: t8
+  trigger: Para ajuste
+  tipo: 200
+  origen:
+  - p4
+  destino:
+  - p5
+- id: t9
+  trigger: Recibir molinos
+  tipo: 200
+  origen:
+  - p12
+  destino:
+  - p17
+- id: t10
+  trigger: Formulacion
+  tipo: 200
+  origen:
+  - p10
+  destino:
+  - p15
+- id: t11
+  trigger: Ajustando
+  tipo: 200
+  origen:
+  - p5
+  destino:
+  - p9
+- id: t12
+  trigger: Fin recepcion
+  tipo: 200
+  origen:
+  - p17
+  destino:
+  - p18
+- id: t13
+  trigger: Carga auto
+  tipo: 200
+  origen:
+  - p28
+  destino:
+  - p31
+- id: t14
+  trigger: Lavar
+  tipo: 200
+  origen:
+  - p21
+  destino:
+  - p1
+  - p24
+- id: t15
+  trigger: A tinturar
+  tipo: 200
+  origen:
+  - p10
+  destino:
+  - p13
+- id: t16
+  trigger: Chequeo
+  tipo: 200
+  origen:
+  - p18
+  destino:
+  - p20
+- id: t17
+  trigger: Chequeo
+  tipo: 200
+  origen:
+  - p9
+  destino:
+  - p20
+- id: t18
+  trigger: Libre
+  tipo: 200
+  origen:
+  - p21
+  destino:
+  - p24
+- id: t19
+  trigger: Ajustando
+  tipo: 200
+  origen:
+  - p6
+  destino:
+  - p9
+- id: t22
+  trigger: A tinturar
+  tipo: 200
+  origen:
+  - p9
+  destino:
+  - p13
+- id: t23
+  trigger: Descargando
+  tipo: 200
+  origen:
+  - p7
+  destino:
+  - p22
+- id: t26
+  trigger: Lavar
+  tipo: 200
+  origen:
+  - p22
+  destino:
+  - p1
+  - p23
+- id: t28
+  trigger: Carga manual
+  tipo: 200
+  origen:
+  - p28
+  destino:
+  - p8
+- id: t29
+  trigger: Fin pigable
+  tipo: 200
+  origen:
+  - p31
+  destino:
+  - p3
+- id: t30
+  trigger: Fin manual
+  tipo: 200
+  origen:
+  - p8
+  destino:
+  - p3
+- id: t31
+  trigger: Descargar
+  tipo: 200
+  origen:
+  - p10
+  destino:
+  - p7
+- id: t32
+  trigger: Envasando
+  tipo: 200
+  origen:
+  - p11
+  destino:
+  - p16
+- id: t33
+  trigger: Lavar
+  tipo: 200
+  origen:
+  - p16
+  destino:
+  - p1
+  - p25
+- id: t34
+  trigger: Libre
+  tipo: 200
+  origen:
+  - p16
+  destino:
+  - p25
+- id: t35
+  trigger: Para ajuste
+  tipo: 200
+  origen:
+  - p15
+  destino:
+  - p6
+- id: t36
+  trigger: No conforme
+  tipo: 200
+  origen:
+  - p15
+  destino:
+  - p19
+- id: t37
+  trigger: Descartar
+  tipo: 200
+  origen:
+  - p19
+  destino:
+  - p21
+- id: t38
+  trigger: Libre
+  tipo: 200
+  origen:
+  - p22
+  destino:
+  - p23
+- id: t41
+  trigger: Asignar equipo
+  tipo: 200
+  origen:
+  - p14
+  destino:
+  - p28

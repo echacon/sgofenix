@@ -1,0 +1,198 @@
+nombre: Proceso generado desde DIS_MOL_DIL_Molinos.pnml
+categoria_recurso: DISPERSOR_ALTA
+pasos:
+- id: p1
+  nombre: Preparando molinos
+  duracion: 10 m
+  velocidad: media
+- id: p2
+  nombre: Moliendo
+  duracion: 10 m
+  velocidad: media
+- id: p3
+  nombre: Descargando a dilucion
+  duracion: 10 m
+  velocidad: media
+- id: p5
+  nombre: Chequeando lab
+  duracion: 10 m
+  velocidad: media
+- id: p6
+  nombre: Esperando completar
+  duracion: 10 m
+  velocidad: media
+- id: p7
+  nombre: Esperando lavado
+  duracion: 10 m
+  velocidad: media
+- id: p8
+  nombre: En formulacion
+  duracion: 10 m
+  velocidad: media
+- id: p9
+  nombre: Fallo
+  duracion: 10 m
+  velocidad: media
+- id: p10
+  nombre: Esperando muestra
+  duracion: 10 m
+  velocidad: media
+- id: p11
+  nombre: Cargando de dispersion
+  duracion: 10 m
+  velocidad: media
+- id: p12
+  nombre: Recurso libre
+  duracion: 10 m
+  velocidad: media
+- id: p13
+  nombre: Completando
+  duracion: 10 m
+  velocidad: media
+- id: p14
+  nombre: Libre
+  duracion: 10 m
+  velocidad: media
+- id: p15
+  nombre: Producto molido
+  duracion: 10 m
+  velocidad: media
+- id: p16
+  nombre: Dispersion
+  duracion: 10 m
+  velocidad: media
+- id: p17
+  nombre: Descartando
+  duracion: 10 m
+  velocidad: media
+- id: p18
+  nombre: Lavando
+  duracion: 10 m
+  velocidad: media
+- id: p21
+  nombre: Prod. no conforme
+  duracion: 10 m
+  velocidad: media
+transiciones:
+- id: t1
+  trigger: Dispersion lista
+  tipo: 201
+  origen:
+  - p14
+  destino:
+  - p1
+- id: t2
+  trigger: Iniciar carga
+  tipo: 200
+  origen:
+  - p1
+  - p16
+  destino:
+  - p11
+- id: t4
+  trigger: Formulacion
+  tipo: 200
+  origen:
+  - p5
+  destino:
+  - p8
+- id: t5
+  trigger: Chequeo
+  tipo: 200
+  origen:
+  - p2
+  destino:
+  - p10
+- id: t6
+  trigger: Para moler
+  tipo: 200
+  origen:
+  - p5
+  destino:
+  - p2
+- id: t9
+  trigger: Iniciar molienda
+  tipo: 200
+  origen:
+  - p11
+  destino:
+  - p2
+- id: t10
+  trigger: Para moler
+  tipo: 200
+  origen:
+  - p8
+  destino:
+  - p2
+- id: t11
+  trigger: Lavar
+  tipo: 200
+  origen:
+  - p3
+  destino:
+  - p7
+  - p15
+- id: t12
+  trigger: Lavar
+  tipo: 200
+  origen:
+  - p17
+  destino:
+  - p7
+  - p9
+- id: t13
+  trigger: Para completar
+  tipo: 200
+  origen:
+  - p5
+  destino:
+  - p6
+- id: t14
+  trigger: No conforme
+  tipo: 200
+  origen:
+  - p8
+  destino:
+  - p21
+- id: t17
+  trigger: Completando
+  tipo: 200
+  origen:
+  - p6
+  destino:
+  - p13
+- id: t18
+  trigger: Chequeando
+  tipo: 200
+  origen:
+  - p10
+  destino:
+  - p5
+- id: t24
+  trigger: Descarga a diluidor
+  tipo: 200
+  origen:
+  - p13
+  destino:
+  - p3
+- id: t25
+  trigger: Lavando
+  tipo: 200
+  origen:
+  - p7
+  destino:
+  - p18
+- id: t26
+  trigger: Libre
+  tipo: 200
+  origen:
+  - p18
+  destino:
+  - p12
+- id: t28
+  trigger: Descartar
+  tipo: 200
+  origen:
+  - p21
+  destino:
+  - p17

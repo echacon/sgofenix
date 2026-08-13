@@ -1,0 +1,297 @@
+nombre: Proceso dispersión solidos pulvorentos
+categoria_recurso: DISPERSOR_ALTA
+pasos:
+- id: p1
+  nombre: Reposo
+  duracion: 0 m
+  velocidad: baja
+- id: p2
+  nombre: Preparación equipo
+  duracion: 10 m
+  velocidad: baja
+- id: p3
+  nombre: Cargando vehiculo
+  duracion: 5 m
+  velocidad: baja
+- id: p4
+  nombre: Cargando polvos
+  duracion: 10 m
+  velocidad: alta
+- id: p5
+  nombre: Cargando solidos
+  duracion: 10 m
+  velocidad: media
+- id: p6
+  nombre: Dispersion
+  duracion: 20 m
+  velocidad: alta
+- id: p7
+  nombre: En Espera toma muestra
+  duracion: 2 m
+  velocidad: baja
+- id: p8
+  nombre: Moliendo
+  duracion: 15 m
+  velocidad: media
+- id: p9
+  nombre: Esperando resultado 1
+  duracion: 20 m
+  velocidad: baja
+- id: p10
+  nombre: Ajustando
+  duracion: 10 m
+  velocidad: baja
+- id: p11
+  nombre: Validando viabilidad
+  duracion: 10 m
+  velocidad: baja
+- id: p12
+  nombre: Esperando por toma muestra 2
+  duracion: 10 m
+  velocidad: media
+- id: p13
+  nombre: Esperando por resultados 2
+  duracion: 10 m
+  velocidad: media
+- id: p14
+  nombre: En formulacion 2
+  duracion: 20 m
+  velocidad: media
+- id: p15
+  nombre: Ajustes 2
+  duracion: 20 m
+  velocidad: media
+- id: p16
+  nombre: Producto a descartar
+  duracion: 20 m
+- id: p17
+  nombre: Esperando por molinos
+  duracion: 10 m
+- id: p18
+  nombre: Descargando a molinos
+- id: p19
+  nombre: Liberar equipo desde deascarte
+- id: p20
+  nombre: Liberando equipo desde descarga
+- id: p21
+  nombre: Pasta inicial
+- id: p23
+  nombre: Producto descartado
+transiciones:
+- id: t1
+  trigger: Inicio
+  tipo: 200
+  origen:
+  - p1
+  destino:
+  - p2
+- id: t2
+  trigger: Iniciar carga
+  tipo: 200
+  origen:
+  - p2
+  destino:
+  - p3
+- id: t3
+  trigger: Cargar polvos
+  tipo: 200
+  origen:
+  - p3
+  destino:
+  - p4
+- id: t4
+  trigger: Cargar solidos
+  tipo: 200
+  origen:
+  - p3
+  destino:
+  - p5
+- id: t5
+  trigger: Cargar solidos
+  tipo: 200
+  origen:
+  - p4
+  destino:
+  - p5
+- id: t6
+  trigger: Fin carga solidos
+  tipo: 200
+  origen:
+  - p5
+  destino:
+  - p6
+- id: t7
+  trigger: Descargar a molinos
+  tipo: 200
+  origen:
+  - p6
+  destino:
+  - p17
+- id: t8
+  trigger: Chequeo inicial
+  tipo: 200
+  origen:
+  - p6
+  destino:
+  - p7
+- id: t9
+  trigger: Moler dispersion
+  tipo: 200
+  origen:
+  - p9
+  destino:
+  - p8
+- id: t10
+  trigger: Ajustar
+  tipo: 200
+  origen:
+  - p9
+  destino:
+  - p10
+- id: t11
+  trigger: A chequeo final
+  tipo: 200
+  origen:
+  - p6
+  destino:
+  - p12
+- id: t12
+  trigger: Tomar muestra
+  tipo: 200
+  origen:
+  - p7
+  destino:
+  - p9
+- id: t13
+  trigger: Fin molienda
+  tipo: 200
+  origen:
+  - p8
+  destino:
+  - p7
+- id: t14
+  trigger: Reformular
+  tipo: 200
+  origen:
+  - p9
+  destino:
+  - p11
+- id: t15
+  trigger: Fin ajuste
+  tipo: 200
+  origen:
+  - p10
+  destino:
+  - p7
+- id: t16
+  trigger: Ajustar
+  tipo: 200
+  origen:
+  - p11
+  destino:
+  - p10
+- id: t17
+  trigger: Descartar
+  tipo: 200
+  origen:
+  - p11
+  destino:
+  - p16
+- id: t19
+  trigger: Tomar muestra 2
+  tipo: 200
+  origen:
+  - p12
+  destino:
+  - p13
+- id: t20
+  trigger: Reformular 2
+  tipo: 200
+  origen:
+  - p13
+  destino:
+  - p14
+- id: t21
+  trigger: Ajustar 2
+  tipo: 200
+  origen:
+  - p14
+  destino:
+  - p15
+- id: t22
+  trigger: Descartar
+  tipo: 200
+  origen:
+  - p14
+  destino:
+  - p16
+- id: t23
+  trigger: Fin ajustes 2
+  tipo: 200
+  origen:
+  - p15
+  destino:
+  - p12
+- id: t24
+  trigger: Ajustar 2
+  tipo: 200
+  origen:
+  - p13
+  destino:
+  - p15
+- id: t25
+  trigger: Descargar a molinos
+  tipo: 200
+  origen:
+  - p13
+  destino:
+  - p17
+- id: t26
+  trigger: Molino listo
+  tipo: 201
+  origen:
+  - p17
+  destino:
+  - p18
+- id: t27
+  trigger: Fin descarte
+  tipo: 200
+  origen:
+  - p16
+  destino:
+  - p19
+  - p23
+- id: t28
+  trigger: Fin descarga
+  tipo: 200
+  origen:
+  - p18
+  destino:
+  - p20
+  - p21
+- id: t29
+  trigger: Libre
+  tipo: 200
+  origen:
+  - p19
+  destino: []
+- id: t30
+  trigger: Libre
+  tipo: 200
+  origen:
+  - p20
+  destino: []
+- id: t31
+  trigger: Descargar a molinos
+  tipo: 200
+  origen:
+  - p9
+  destino:
+  - p17
+- id: t33
+  trigger: A chequeo final
+  tipo: 200
+  origen:
+  - p9
+  destino:
+  - p12

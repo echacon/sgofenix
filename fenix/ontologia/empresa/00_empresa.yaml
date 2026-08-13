@@ -1,0 +1,21 @@
+# ontologia/empresa/00_empresa.yaml
+unidades_funcionales:
+  - codigo: "EMPRESA_001"
+    nombre: "Mi Empresa S.A."
+    es_unidad_negocio: true          # Para identificar que también es Unidad de Negocio
+    descripcion: "Empresa principal del grupo"
+
+  - codigo: "PROD_001"
+    nombre: "Producción"
+    unidad_padre: "EMPRESA_001"
+    descripcion: "Unidad de producción principal"
+
+  - codigo: "AGUA_001"
+    nombre: "Pinturas base agua"
+    unidad_padre: "PROD_001"
+    descripcion: "Línea de producción de pinturas base agua"
+
+  - codigo: "ESMALTE_001"
+    nombre: "Esmaltes"
+    unidad_padre: "PROD_001"
+    descripcion: "Línea de producción de esmaltes"

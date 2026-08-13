@@ -1,0 +1,18 @@
+patron: "DIS-DIL"                 # nombre del patrón en 03_patrones.yaml
+familia: "Látex"                  # opcional, si no existe se crea
+descripcion: "Ruta estándar para látex"
+version: "1.0"
+activo: true
+condiciones:
+  lote_minimo_kg: 0
+  lote_maximo_kg: 5000
+  prioridad_minima: 1
+
+# Mapeo de etapas del patrón a archivos PNML (redes hijas)
+redes_por_etapa:
+  DIS: "DIS_DIL_dispersion.pnml"
+  DIL: "DIS_DIL_dilucion.pnml"
+
+# Red de orquestacion 
+redes_adicionales:
+  integradora: "DIS_DIL_integradora.pnml"

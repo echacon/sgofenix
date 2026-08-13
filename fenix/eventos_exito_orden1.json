@@ -1,0 +1,245 @@
+{
+  "nombre": "Secuencia Exitosa - LAT-1000",
+  "descripcion": "Producción normal sin fallos",
+  "ultimo_evento_procesado": 11,
+  "eventos": [
+    {
+      "id": 1,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dispersion_RedHija_Dis_Dil_V1",
+      "transicion": "Asignar equipo",
+      "recurso": "DISP_PRIN_01",
+      "timestamp": "2026-05-13T09:00:00",
+      "procesado": 
+    },
+    {
+      "id": 2,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dispersion_RedHija_Dis_Dil_V1",
+      "transicion": "Cargar auto",
+      "recurso": "DISP_PRIN_01",
+      "timestamp": "2026-05-13T09:05:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:44.214827",
+      "resultado": "exito"
+    },
+    {
+      "id": 3,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dispersion_RedHija_Dis_Dil_V1",
+      "transicion": "Tolva",
+      "recurso": "DISP_PRIN_01",
+      "timestamp": "2026-05-13T09:10:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:45.814642",
+      "resultado": "exito"
+    },
+    {
+      "id": 4,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dispersion_RedHija_Dis_Dil_V1",
+      "transicion": "Fin solidos",
+      "recurso": "DISP_PRIN_01",
+      "timestamp": "2026-05-13T09:20:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:46.775116",
+      "resultado": "exito"
+    },
+    {
+      "id": 5,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dispersion_RedHija_Dis_Dil_V1",
+      "transicion": "Chequeo",
+      "recurso": "DISP_PRIN_01",
+      "timestamp": "2026-05-13T10:00:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:47.583989",
+      "resultado": "exito"
+    },
+    {
+      "id": 6,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Asignar equipo",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T10:00:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:48.362674",
+      "resultado": "exito"
+    },
+    {
+      "id": 7,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dispersion_RedHija_Dis_Dil_V1",
+      "transicion": "Chequeando",
+      "recurso": "DISP_PRIN_01",
+      "timestamp": "2026-05-13T10:05:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:49.102902",
+      "resultado": "exito"
+    },
+    {
+      "id": 8,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Carga auto",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T10:06:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:49.810169",
+      "resultado": "exito"
+    },
+    {
+      "id": 9,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Fin pigable",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T10:30:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:50.508116",
+      "resultado": "exito"
+    },
+    {
+      "id": 10,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dispersion_RedHija_Dis_Dil_V1",
+      "transicion": "Transportar",
+      "recurso": "DISP_PRIN_01",
+      "timestamp": "2026-05-13T10:32:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:51.221218",
+      "resultado": "exito"
+    },
+    {
+      "id": 11,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Recibir dispersion",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T10:40:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:51.902631",
+      "resultado": "exito"
+    },
+    {
+      "id": 12,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dispersion_RedHija_Dis_Dil_V1",
+      "transicion": "Transportando",
+      "recurso": "DISP_PRIN_01",
+      "timestamp": "2026-05-13T10:45:00",
+      "procesado": true,
+      "fecha_procesado": "2026-05-17T13:38:52.536345",
+      "resultado": "fallo"
+    },
+    {
+      "id": 13,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Fin carga",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T11:00:00",
+      "procesado": false
+    },
+    {
+      "id": 14,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dispersion_RedHija_Dis_Dil_V1",
+      "transicion": "Libre",
+      "recurso": "DISP_PRIN_01",
+      "timestamp": "2026-05-13T11:01:00",
+      "procesado": false
+    },
+    {
+      "id": 15,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Chequeo",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T12:45:00",
+      "procesado": false
+    },
+    {
+      "id": 16,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Chequeando",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T12:50:00",
+      "procesado": false
+    },
+    {
+      "id": 17,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "A tinturar",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T12:55:00",
+      "procesado": false
+    },
+    {
+      "id": 18,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Tinturacion",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T13:45:00",
+      "procesado": false
+    },
+    {
+      "id": 19,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Para ajuste",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T14:45:00",
+      "procesado": false
+    },
+    {
+      "id": 20,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Ajustando",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T14:50:00",
+      "procesado": false
+    },
+    {
+      "id": 21,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Chequeo",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T15:05:00",
+      "procesado": false
+    },
+    {
+      "id": 22,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Chequeando",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T15:10:00",
+      "procesado": false
+    },
+    {
+      "id": 23,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Intermedio",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T15:15:00",
+      "procesado": false
+    },
+    {
+      "id": 24,
+      "orden_id": 1,
+      "red": "Pintuco_BaseAgua_dilucion_RedHija_Dis_Dil_V2",
+      "transicion": "Libre",
+      "recurso": "TANQ_DIL_5000",
+      "timestamp": "2026-05-13T15:50:00",
+      "procesado": false
+    }
+  ]
+}

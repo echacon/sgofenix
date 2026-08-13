@@ -1,0 +1,49 @@
+# ============================================================
+# CAPACIDADES (Qué tipo de recurso puede hacer qué operación)
+# ============================================================
+
+capacidades:
+  - tipo_recurso: "DISPERSOR_ALTA"
+    tipo_operacion: "DIS"
+    eficiencia_estimada: 0.98
+    costo_por_hora: 45000
+  
+  - tipo_recurso: "DISPERSOR_ALTA"
+    tipo_operacion: "DIS2"
+    eficiencia_estimada: 0.99
+    costo_por_hora: 45000
+  
+  - tipo_recurso: "DISPERSOR_MEDIA"
+    tipo_operacion: "DIS"
+    eficiencia_estimada: 0.97
+    costo_por_hora: 25000
+  
+  - tipo_recurso: "DISPERSOR_MEDIA"
+    tipo_operacion: "DIL"
+    eficiencia_estimada: 0.99
+    costo_por_hora: 20000
+  
+  - tipo_recurso: "DISPERSOR_BAJA"
+    tipo_operacion: "DIS_BAJA"
+    eficiencia_estimada: 0.99
+    costo_por_hora: 20000
+  
+  - tipo_recurso: "MOLINO_BOLAS"
+    tipo_operacion: "MOL"
+    eficiencia_estimada: 0.85
+    costo_por_hora: 65000
+  
+  - tipo_recurso: "MOLINO_VERTICAL"
+    tipo_operacion: "MOL"
+    eficiencia_estimada: 0.90
+    costo_por_hora: 40000
+  
+  - tipo_recurso: "TANQUE_MEZCLA_5000"
+    tipo_operacion: "DIL"
+    eficiencia_estimada: 0.995
+    costo_por_hora: 15000
+  
+  - tipo_recurso: "TANQUE_MEZCLA_2000"
+    tipo_operacion: "DIL"
+    eficiencia_estimada: 0.995
+    costo_por_hora: 12000

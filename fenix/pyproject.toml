@@ -1,0 +1,86 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fenix"
+version = "0.1.0"
+description = "Sistema de seguimiento de producción basado en Redes de Petri Coloreadas y arquitectura Holónica"
+readme = "README.md"
+license = {text = "GPL-3.0"}   # ajusta si prefieres MIT, Apache-2.0, etc.
+requires-python = ">=3.10"
+
+authors = [
+    {name = "FÉNIX Team"}
+]
+
+keywords = [
+    "petri-nets",
+    "production-tracking",
+    "mes",
+    "manufacturing",
+    "holonic",
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Manufacturing",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "flask>=3.0",
+    "sqlalchemy>=2.0",
+    "pyyaml>=6.0",
+    "openpyxl>=3.1",       # lectura de Excel (.xlsx)
+    "lxml>=5.0",           # parsing de PNML (XML)
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "black>=24.0",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+fenix-web   = "app:main"       # flask run equivalente
+fenix-motor = "main:bucle_principal"  # orquestador continuo
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "modelos*",
+    "servicios*",
+    "utils*",
+    "routes*",
+    "validadores*",
+    "importadores*",
+    "config*",
+]
+
+# ----- Herramientas -----
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "W", "I"]   # errores, imports, warnings básicos
+ignore = ["E501"]                # líneas largas: black ya las controla
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

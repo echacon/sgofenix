@@ -1,0 +1,29 @@
+{
+  "orden_3": [
+    {"red": "dispersion", "transicion": "Asignar equipo", "datos": {}},
+    {"red": "dispersion", "transicion": "Cargar auto", "datos": {}},
+    {"red": "dispersion", "transicion": "Tolva", "datos": {}},
+    {"red": "dispersion", "transicion": "Fin solidos", "datos": {}},
+    {"red": "dispersion", "transicion": "Chequeo", "datos": {}},
+    {"red": "dilucion", "transicion": "Asignar equipo", "datos": {}},
+    {"red": "dilucion", "transicion": "Carga auto", "datos": {}},
+    {"red": "dilucion", "transicion": "Fin pigable", "datos": {}},
+    {"red": "dispersion", "transicion": "Chequeando", "datos": {}},
+    {"red": "dispersion", "transicion": "Transportar", "datos": {}},
+    {"red": "dilucion", "transicion": "Recibir dispersion", "datos": {}},
+    {"red": "dispersion", "transicion": "Transportando", "datos": {}},
+    {"red": "dilucion", "transicion": "Fin carga", "datos": {}},
+    {"red": "dilucion", "transicion": "Chequeo", "datos": {}},
+    {"red": "dispersion", "transicion": "Libre", "datos": {}},
+    {"red": "dilucion", "transicion": "Chequeando", "datos": {}},
+    {"red": "dilucion", "transicion": "A tinturar", "datos": {}},
+    {"red": "dilucion", "transicion": "Tinturacion", "datos": {}},
+    {"red": "dilucion", "transicion": "Para ajuste", "datos": {}},
+    {"red": "dilucion", "transicion": "Ajustando", "datos": {}},
+    {"red": "dilucion", "transicion": "Chequeo", "datos": {}},
+    {"red": "dilucion", "transicion": "Chequeando", "datos": {}},
+    {"red": "dilucion", "transicion": "No conforme", "datos": {}},
+    {"red": "dilucion", "transicion": "Descartar", "datos": {}},
+    {"red": "dilucion", "transicion": "Libre", "datos": {}}
+  ]
+}

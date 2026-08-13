@@ -1,0 +1,36 @@
+{
+  "id": "ruta_base_agua_dis_dil",
+  "nombre": "Base Agua DIS-DIL",
+  "version": "1.0.0",
+  "producto_id": 1,
+  "patron_ruta_id": 1,
+  "redes": {
+    "DIS_DIL_integradora": {
+      "pnml": "redes/DIS_DIL_integradora.pnml",
+      "recursos": "recursos/integradora_recursos.json",
+      "tipo": "padre"
+    },
+    "DIS_DIL_dispersion": {
+      "pnml": "redes/DIS_DIL_dispersion.pnml",
+      "recursos": "recursos/dispersion_recursos.json",
+      "tipo": "hija"
+    },
+    "DIS_DIL_dilucion.pnml": {
+      "pnml": "redes/DIS_DIL_dilucion.pnml",
+      "recursos": "recursos/dilucion_recursos.json",
+      "tipo": "hija"
+    }
+  },
+  "encadenamiento": "encadenamiento/reglas.json",
+  "estados_finales": {
+    "DIS_DIL_integradora": [
+      "p_terminado"
+    ],
+    "DIS_DIL_dispersion": [
+      "p_fin_dispersion"
+    ],
+    "DIS_DIL_dilucion": [
+      "p_fin_dilucion"
+    ]
+  }
+}

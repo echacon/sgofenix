@@ -1,0 +1,145 @@
+# ============================================================
+# RECURSOS DE PLANTA
+# ============================================================
+
+recursos:
+  - codigo: "DISP_PRIN_01"
+    nombre: "Dispersor Principal"
+    tipo: "equipo"
+    unidad_codigo: "AGUA_001"
+    categoria: "DISPERSOR_ALTA"
+    descripcion: "Dispersor Cowles de 50 HP. Ideal para pastas concentradas de esmaltes y látex."
+    puede_hacer: ["DIS", "DIS2"]
+    parametros:
+      capacidad_maxima_litros: 2000
+      consumo_energia_kw: 37.5
+      costo_hora: 45000
+      rendimiento: 0.98
+  
+  - codigo: "DISP_SEC_01"
+    nombre: "Dispersor Secundario"
+    tipo: "equipo"
+    unidad_codigo: "AGUA_001"
+    categoria: "DISPERSOR_MEDIA"
+    descripcion: "Dispersor de 25 HP para ajustes y productos de menor viscosidad."
+    puede_hacer: ["DIS", "DIL"]
+    parametros:
+      capacidad_maxima_litros: 1000
+      consumo_energia_kw: 18.7
+      costo_hora: 25000
+      rendimiento: 0.97
+  
+  - codigo: "DISP_TEX_01"
+    nombre: "Dispersor de Texturas"
+    tipo: "equipo"
+    unidad_codigo: "AGUA_001"
+    categoria: "DISPERSOR_BAJA"
+    descripcion: "Equipo de baja velocidad con paleta ancha. Para incorporar texturas sin romper."
+    puede_hacer: ["DIS_BAJA", "DIL"]
+    parametros:
+      capacidad_maxima_litros: 1500
+      consumo_energia_kw: 11.2
+      costo_hora: 20000
+      rendimiento: 0.99
+
+ 
+  - codigo: "MOL_BOLAS_01"
+    nombre: "Molino de Bolas Horizontal"
+    tipo: "equipo"
+    unidad_codigo: "AGUA_001"
+    categoria: "MOLINO_BOLAS"
+    descripcion: "Molino horizontal de bolas. Para molienda fina (esmaltes de alta calidad)."
+    puede_hacer: ["MOL"]
+    parametros:
+      capacidad_maxima_litros: 500
+      consumo_energia_kw: 45.0
+      costo_hora: 65000
+      rendimiento: 0.85
+  
+  - codigo: "MOL_VERT_01"
+    nombre: "Molino Vertical"
+    tipo: "equipo"
+    unidad_codigo: "AGUA_001"
+    categoria: "MOLINO_VERTICAL"
+    descripcion: "Molino vertical de arena. Para molienda media (selladores, imprimantes)."
+    puede_hacer: ["MOL"]
+    parametros:
+      capacidad_maxima_litros: 800
+      consumo_energia_kw: 30.0
+      costo_hora: 40000
+      rendimiento: 0.90
+  
+  - codigo: "TANQ_DIL_5000"
+    nombre: "Tanque de Dilución 5000L"
+    tipo: "equipo"
+    unidad_codigo: "AGUA_001"
+    categoria: "TANQUE_MEZCLA_5000"
+    descripcion: "Tanque de 5000 L con agitador. Para ajustes finales y diluciones de lotes grandes."
+    puede_hacer: ["DIL"]
+    parametros:
+      capacidad_maxima_litros: 5000
+      consumo_energia_kw: 15.0
+      costo_hora: 15000
+      rendimiento: 0.995
+  
+  - codigo: "TANQ_DIL_2000"
+    nombre: "Tanque de Dilución 2000L"
+    tipo: "equipo"
+    unidad_codigo: "AGUA_001"
+    categoria: "TANQUE_MEZCLA_2000"
+    descripcion: "Tanque de 2000 L con agitador. Para lotes pequeños y productos especiales."
+    puede_hacer: ["DIL"]
+    parametros:
+      capacidad_maxima_litros: 2000
+      consumo_energia_kw: 10.0
+      costo_hora: 12000
+      rendimiento: 0.995
+
+  - codigo: "TANQ_PULMON_5000L"
+    nombre: "Tanque pulmón 5000L"
+    tipo: "equipo"
+    unidad_codigo: "AGUA_001"
+    categoria: "TANQUE DE RECEPCION"
+
+  - codigo: "TANQ_PULMON_2000L"
+    nombre: "Tanque pulmón 2000L"
+    tipo: "equipo"
+    unidad_codigo: "AGUA_001"
+    categoria: "TANQUE DE RECEPCION"
+
+
+  - codigo: "TANQ_MUESTRAS"
+    nombre: "Tanque de Muestras"
+    tipo: "equipo"
+    unidad_codigo: "AGUA_001"
+    categoria: "TANQUE DE RECEPCION"
+
+
+  
+  # Recursos humanos
+  - codigo: "OP_DISP_T1"
+    nombre: "Operador Dispersión Turno 1"
+    tipo: "personal"
+    categoria: "OPERADOR"
+    puede_hacer: ["DIS", "DIS2", "DIS_BAJA"]
+    parametros:
+      costo_hora: 15000
+      especialidad: "dispersión"
+  
+  - codigo: "OP_MOL_T1"
+    nombre: "Operador Molienda Turno 1"
+    tipo: "personal"
+    categoria: "OPERADOR"
+    puede_hacer: ["MOL"]
+    parametros:
+      costo_hora: 18000
+      especialidad: "molienda"
+  
+  - codigo: "OP_DIL_T1"
+    nombre: "Operador Dilución Turno 1"
+    tipo: "personal"
+    categoria: "OPERADOR"
+    puede_hacer: ["DIL"]
+    parametros:
+      costo_hora: 15000
+      especialidad: "dilución"

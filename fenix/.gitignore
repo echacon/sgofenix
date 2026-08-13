@@ -1,0 +1,79 @@
+# ============================================================
+# FÉNIX - .gitignore
+# ============================================================
+
+# ----- Base de datos (nunca en el repo) -----
+*.db
+*.sqlite
+*.sqlite3
+
+# ----- Logs -----
+*.log
+logs/
+fenix.log
+
+# ----- Uploads y datos de usuario -----
+uploads/
+importacion/pendientes/
+importacion/errores/
+importacion/procesados/
+
+# ----- Backups -----
+backups/
+*.bak
+*~ 
+
+# ----- Artefactos de Windows -----
+*\ -\ Copie*
+* - Copie*
+Thumbs.db
+desktop.ini
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+pip-wheel-metadata/
+
+# ----- Entornos virtuales -----
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# ----- Variables de entorno -----
+.env
+.env.local
+.env.*.local
+
+# ----- IDEs -----
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ----- Testing -----
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ----- Archivos temporales -----
+*.tmp
+*.temp
+tmp/
+
+# ----- Rutas de producto: solo configs, no datos generados -----
+# (los archivos .pnml y .json de configuración SÍ van al repo,
+#  pero los datos de ejecución no)
+
+backup_original

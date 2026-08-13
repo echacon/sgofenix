@@ -1,0 +1,35 @@
+# ============================================================
+# FAMILIAS DE PRODUCTO
+# ============================================================
+
+familias:
+  - nombre: "Látex"
+    descripcion: "Pinturas al agua para interiores y exteriores. Base acrílica o vinílica."
+    version: "1"
+    activo: true
+  
+  - nombre: "Esmalte Sintético"
+    descripcion: "Pinturas al solvente base resina alquídica. Alto brillo y resistencia."
+    version: "1"
+    activo: true
+  
+  - nombre: "Sellador/Imprimante"
+    descripcion: "Productos para sellado y preparación de superficies. Alta carga de sólidos."
+    version: "1"
+    activo: true
+  
+  - nombre: "Barniz/Laca"
+    descripcion: "Productos transparentes o traslúcidos para protección y acabado."
+    version: "1"
+    activo: true
+  
+  - nombre: "Alta Calidad"
+    descripcion: "Pinturas de alto rendimiento, acabado automotriz o similares."
+    version: "1"
+    activo: true
+  
+  - nombre: "Texturada"
+    descripcion: "Revestimientos con textura, plásticos, antiadherentes."
+    version: "1"
+    activo: true
+    

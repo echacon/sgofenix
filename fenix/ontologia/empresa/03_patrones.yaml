@@ -1,0 +1,79 @@
+# ============================================================
+# PATRONES DE RUTA (Redes de Petri abstractas)
+# ============================================================
+
+patrones:
+  # Familia Látex
+  - nombre: "DIS-DIL"
+    descripcion: "Ruta estándar para látex. Dispersión directa y dilución."
+    familia: "Látex"
+    operaciones: ["DIS", "DIL"]
+    transiciones:
+      - nombre: "DIS_a_DIL"
+        desde: "DIS"
+        hacia: "DIL"
+  
+  # Familia Esmalte Sintético
+  - nombre: "DIS-MOL-DIL"
+    descripcion: "Ruta completa para esmaltes. Dispersión, molienda y dilución."
+    familia: "Esmalte Sintético"
+    operaciones: ["DIS", "MOL", "DIL"]
+    transiciones:
+      - nombre: "DIS_a_MOL"
+        desde: "DIS"
+        hacia: "MOL"
+      - nombre: "MOL_a_DIL"
+        desde: "MOL"
+        hacia: "DIL"
+  
+  # Familia Sellador/Imprimante
+  - nombre: "DIS-MOL-DIL (Grueso)"
+    descripcion: "Ruta para selladores. Similar a esmaltes pero con molienda menos exigente."
+    familia: "Sellador/Imprimante"
+    operaciones: ["DIS", "MOL", "DIL"]
+    transiciones:
+      - nombre: "DIS_a_MOL"
+        desde: "DIS"
+        hacia: "MOL"
+      - nombre: "MOL_a_DIL"
+        desde: "MOL"
+        hacia: "DIL"
+  
+  # Familia Barniz/Laca
+  - nombre: "DIS-DIL (Sin Molienda)"
+    descripcion: "Ruta para barnices. No requieren molienda de pigmentos."
+    familia: "Barniz/Laca"
+    operaciones: ["DIS", "DIL"]
+    transiciones:
+      - nombre: "DIS_a_DIL"
+        desde: "DIS"
+        hacia: "DIL"
+  
+  # Familia Alta Calidad
+  - nombre: "DIS-MOL-DIS-DIL"
+    descripcion: "Ruta para alta calidad. Doble dispersión para óptimo acabado."
+    familia: "Alta Calidad"
+    operaciones: ["DIS", "MOL", "DIS2", "DIL"]
+    transiciones:
+      - nombre: "DIS_a_MOL"
+        desde: "DIS"
+        hacia: "MOL"
+      - nombre: "MOL_a_DIS2"
+        desde: "MOL"
+        hacia: "DIS2"
+      - nombre: "DIS2_a_DIL"
+        desde: "DIS2"
+        hacia: "DIL"
+  
+  # Familia Texturada
+  - nombre: "DIS-DIL-DISBAJA"
+    descripcion: "Ruta para texturadas. Dispersión final a baja velocidad para incorporar textura."
+    familia: "Texturada"
+    operaciones: ["DIS", "DIL", "DIS_BAJA"]
+    transiciones:
+      - nombre: "DIS_a_DIL"
+        desde: "DIS"
+        hacia: "DIL"
+      - nombre: "DIL_a_DISBAJA"
+        desde: "DIL"
+        hacia: "DIS_BAJA"
