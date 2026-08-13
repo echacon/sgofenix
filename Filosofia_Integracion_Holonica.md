@@ -31,7 +31,7 @@ Este modelo divide la fábrica en niveles rígidos:
 ```
 
 ### El Antecedente Histórico
-El primer autor de esta arquitectura participó en el diseño y definición de las estructuras de automatización de grandes empresas estatales del sector petroquímico y petrolero (como **PDVSA** en Venezuela) a finales del siglo XX. Aquellas arquitecturas, aunque robustas, eran **jerárquicas y descentralizadas**: el control de la información fluía verticalmente. Si un PLC en el Nivel 1 fallaba o cambiaba de comportamiento, la actualización de los modelos de planificación en el Nivel 4 requería complejas intervenciones manuales y middleware costoso.
+El primer autor de esta arquitectura participó en el diseño y definición de las estructuras de automatización de grandes empresas estatales del sector petroquímico y petrolero a finales del siglo XX. Aquellas arquitecturas, aunque robustas, eran **jerárquicas y descentralizadas**: el control de la información fluía verticalmente. Si un PLC en el Nivel 1 fallaba o cambiaba de comportamiento, la actualización de los modelos de planificación en el Nivel 4 requería complejas intervenciones manuales y middleware costoso.
 
 Este enfoque jerárquico tradicional es inviable para las PyMEs debido a:
 1.  **Altos costos de integración:** Licenciamiento y mantenimiento de software propietario (MES/APS).
@@ -104,14 +104,16 @@ Fénix está estructurado para que una empresa real pueda desplegarlo sin conoci
                              ┌──────────┐      ┌─────────────┐      ┌───────────────┐
                              │  FÉNIX   │─────>│ Programación│─────>│Ejecución en   │
     LÓGICA DE FLUJO (YAML)   │  Parser  │      │   Óptima    │      │ Planta (SCADA)│
-  ┌────────────────────────┐      ▲      └─────────────┘      └───────┬───────┘
-  │ Secuencia de Pasos y   ├──────┘                                   │
-  │ Reglas de Handshake    │                                          │  Retroalimentación
-  └────────────────────────┘                                          └───────┘
+                             └──────────┘      └─────────────┘      └───────┬───────┘
+                                  ▲                                         |
+  ┌────────────────────────┐      │                                         └─────      
+  │ Secuencia de pasos     |      |                                         Realimentación   
+  | y Reglas de Handshake  │──────┘         
+  └────────────────────────┘                                          
 ```
 
 1.  **Carga de Datos (Excel):** La empresa define su estructura de costos básicos en una plantilla Excel inteligente. Aquí se listan las familias de productos, los recursos físicos con sus tarifas horarias de operarios, costos de energía y depreciación, y las recetas de ingredientes (BOM).
-2.  **Definición del Flujo (YAML):** En lugar de programar código, el ingeniero de planta escribe un "guion" YAML muy simple donde declara los pasos del proceso. Fénix traduce este YAML automáticamente a la Red de Petri formal.
+2.  **Definición del Flujo (YAML):** En lugar de programar código, el ingeniero de planta escribe un "guion" YAML muy simple donde declara los pasos del proceso. Fénix traduce este YAML automáticamente a la Red de Petri formal. También pued eser utilizado un archivo .pnml
 3.  **Orquestador de Ejecución:** El sistema genera una interfaz web responsiva para los operarios. Cuando un operario presiona "Iniciar" en su tablet, el SCADA envía un trigger a Fénix, el token avanza en la Red de Petri y se registra el costo acumulado.
 4.  **Bucle de Retroalimentación (SCADA y EWMA):** Los sensores de energía y los registros de tiempo reales del SCADA se comparan con los parámetros nominales guardados en el Excel. Semanalmente, el estimador EWMA de Fénix calibrá los parámetros nominales históricos, y el cálculo del **Indicador de Desviación de Energía (EDR)** alerta al equipo de mantenimiento si una máquina está consumiendo más de lo normal debido a desgaste físico.
 
