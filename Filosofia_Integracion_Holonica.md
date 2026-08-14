@@ -79,7 +79,47 @@ Debido a que el rendimiento de materiales de una etapa previa influye en la cant
 
 ---
 
-## 3. Resiliencia ante Fallos (La Capacidad Fénix)
+## 3. Separación de Control Continuo y Supervisión de Trayectoria (Eventos)
+
+En los sistemas híbridos de manufactura, es fundamental diferenciar las responsabilidades de control. El **Planificador y Orquestador Fénix** no realiza el control continuo en tiempo real de lazo cerrado (como la regulación fina de temperatura mediante válvulas o velocidad de agitación por PID); esa tarea le compete directamente a la instrumentación local, controladores dedicados y PLCs.
+
+Fénix actúa a nivel de **supervisión de la trayectoria de eventos discretos**:
+1.  **Carga de Límites:** Genera la trayectoria nominal del lote y envía al SCADA/PLC los límites operativos o **invariantes** del paso (ej. Temperatura máxima de $55^\circ\text{C}$, Velocidad objetivo).
+2.  **Verificación Ex post y Ex ante:** Durante la ejecución, recibe alarmas discretas y telemetría promediada del SCADA.
+3.  **Chequeo de Marcado:** Valida que el token avance en la Red de Petri al lugar correcto en el orden programado.
+4.  **Detección de Desviaciones:** Si se detecta un comportamiento fuera de los invariantes o un retraso anómalo en el disparo de la transición, Fénix alerta del fallo de la trayectoria física respecto al plan y recalcula dinámicamente los costos o redirecciona el lote.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Fenix as Fénix (Planificador/Petri)
+    participant SCADA as SCADA / Tablet Operario
+    participant PLC as PLC (Control Continuo)
+    participant Planta as Sensores/Actuadores Planta
+
+    Note over Fenix,Planta: 1. Fase de Planificación y Carga
+    Fenix->>SCADA: Envía Trayectoria Planificada e Invariantes (Límites de T, Vel)
+    SCADA->>PLC: Carga setpoints nominales y alarmas
+
+    Note over PLC,Planta: 2. Fase de Ejecución (Control del Continuo)
+    loop Control de Lazo Cerrado (PID local)
+        Planta->>PLC: Lecturas en tiempo real continuo (T(t), Vel(t))
+        PLC->>PLC: Cálculo de lazo continuo
+        PLC->>Planta: Acción física inmediata (Ajuste de válvulas, velocidad de motor)
+    end
+
+    Note over SCADA,Fenix: 3. Fase de Supervisión y Verificación de Trayectoria
+    Planta->>SCADA: Evento físico (ej. Lote finalizado, Temperatura media del paso)
+    SCADA->>Fenix: Evento discreto (Disparo Transición) + Datos promedio de telemetría
+    Fenix->>Fenix: Valida invariantes (¿T_media <= 55°C?) y actualiza Marcado Petri
+    alt Trayectoria OK
+        Fenix-->>SCADA: Confirmación y habilitación de siguiente paso
+    else Desviación detectada o Invariante violado
+        Fenix-->>SCADA: Alarma de desviación y re-planificación de costos alternos
+    end
+```
+
+## 4. Resiliencia ante Fallos (La Capacidad Fénix)
 
 El nombre del sistema evoca al ave mitológica que renace de sus cenizas. En entornos de PyMEs, las caídas de tensión eléctrica, fallos de red o reinicios de computadores son comunes. 
 
