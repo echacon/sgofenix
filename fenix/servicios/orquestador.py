@@ -15,7 +15,7 @@ from modelos.MensajePendiente import MensajePendiente
 from modelos.DocumentosNegocio import OrdenProduccion
 from modelos.Encadenamiento import ConfiguracionEncadenamiento
 from modelos.RedPetri import RedPetri, TransicionRed
-from modelos.Producto import Producto, HolonRuta
+from modelos.Producto import Producto, HolonRuta, AsignacionRecurso, InvariantePaso, CriterioAceptacionEtapa, EspecificacionCalidad
 from servicios.verificador_terminacion import VerificadorTerminacion
 
 logger = logging.getLogger(__name__)
@@ -297,7 +297,7 @@ class Orquestador:
 
     def procesar_evento_planta(self, orden_id: int, evento_nombre: str,
                             recurso_nombre: str = None, red_nombre: str = None,
-                            timestamp: datetime = None) -> bool:
+                            timestamp: datetime = None, mediciones: dict = None) -> bool:
         """Procesa un evento de planta (trigger 200).
         
         Args:
@@ -306,6 +306,7 @@ class Orquestador:
             recurso_nombre: Recurso físico que originó el evento (opcional)
             red_nombre: Nombre de la red (opcional, se deduce si no se da)
             timestamp: Momento del evento (si no se da, usa ahora)
+            mediciones: Mediciones de telemetría física del SCADA (opcional)
         """
         if timestamp is None:
             timestamp = datetime.now()
@@ -321,7 +322,6 @@ class Orquestador:
             logger.error(f"❌ Falta red_nombre y no se pudo resolver mediante recurso")
             return False
         
-        # Resto del código existente (buscar instancia, verificar transiciones, etc.)
         inst_mem_id = self._buscar_instancia_red(orden_id, red_nombre)
         if not inst_mem_id:
             logger.error(f"❌ Instancia no encontrada: {red_nombre} para orden {orden_id}")
@@ -344,6 +344,47 @@ class Orquestador:
         if len(transiciones_habilitadas) > 1:
             logger.info(f"   ℹ️ Evento '{evento_nombre}' habilita múltiples: {transiciones_habilitadas}. Usando {trans_id}")
         
+        # Validar invariantes del paso actual (antes de disparar)
+        if mediciones and recurso_nombre:
+            from modelos.Recursos import Recurso
+            from modelos.Taxonomia import EtapaRuta
+            
+            recurso = self.session.query(Recurso).filter(
+                (Recurso.nombre == recurso_nombre) | (Recurso.codigo == recurso_nombre)
+            ).first()
+            
+            if recurso:
+                inst_bd = self.session.query(InstanciaRed).filter_by(
+                    orden_id=orden_id, tipo=red_nombre, activa=True
+                ).first()
+                
+                if inst_bd:
+                    red_mem = instancia.red
+                    in_places = [a.source for a in red_mem.arcs.values() if a.target == trans_id]
+                    lugar_origen_nombre = red_mem.places[in_places[0]].nombre if in_places else ""
+                    
+                    asig = self.session.query(AsignacionRecurso).join(EtapaRuta).filter(
+                        AsignacionRecurso.holon_ruta_id == inst_bd.holon_ruta_id,
+                        AsignacionRecurso.recurso_id == recurso.id,
+                        (EtapaRuta.nombre.like(f"%{lugar_origen_nombre}%") | 
+                         EtapaRuta.nombre.like(f"%{in_places[0]}%") if in_places else True)
+                    ).first()
+                    
+                    if asig:
+                        invariantes = self.session.query(InvariantePaso).filter_by(
+                            asignacion_recurso_id=asig.id
+                        ).all()
+                        
+                        for inv in invariantes:
+                            if inv.parametro in mediciones:
+                                val = mediciones[inv.parametro]
+                                if inv.valor_minimo is not None and val < inv.valor_minimo:
+                                    logger.error(f"❌ Invariante violado: {inv.parametro} ({val}) menor que mínimo ({inv.valor_minimo})")
+                                    raise ValueError(f"Invariante violado: {inv.parametro} fuera de rango")
+                                if inv.valor_maximo is not None and val > inv.valor_maximo:
+                                    logger.error(f"❌ Invariante violado: {inv.parametro} ({val}) mayor que máximo ({inv.valor_maximo})")
+                                    raise ValueError(f"Invariante violado: {inv.parametro} fuera de rango")
+
         # Obtener token actual
         token_actual = self.motor.obtener_token(inst_mem_id)
         if not token_actual:
@@ -367,7 +408,7 @@ class Orquestador:
         
         if resultado:
             self._persistir_evento_externo(inst_mem_id, evento_nombre, recurso_nombre, timestamp,
-                                        duracion_real, costo_paso)
+                                        duracion_real, costo_paso, mediciones)
             token_nuevo = self.motor.obtener_token(inst_mem_id)
             if token_nuevo:
                 transicion_obj = instancia.red.transitions.get(trans_id)
@@ -379,6 +420,134 @@ class Orquestador:
         
         return False
     
+
+    def procesar_control_calidad(self, orden_id: int, recurso_nombre: str, mediciones_qc: Dict[str, float], red_nombre: str = None) -> bool:
+        """
+        Recibe las mediciones de control de calidad del laboratorio.
+        Compara con los CriterioAceptacionEtapa de la etapa actual.
+        Si cumple, dispara automáticamente la aprobación (trigger 201).
+        Si falla, dispara el reproceso (trigger 200).
+        """
+        if not red_nombre:
+            red_nombre = self._resolver_red_por_recurso(orden_id, recurso_nombre)
+        if not red_nombre:
+            logger.error(f"❌ No se pudo resolver red para recurso {recurso_nombre}")
+            return False
+            
+        inst_mem_id = self._buscar_instancia_red(orden_id, red_nombre)
+        if not inst_mem_id:
+            return False
+            
+        instancia = self.motor.instancias.get(inst_mem_id)
+        if not instancia or instancia.bloqueada:
+            return False
+            
+        inst_bd = self.session.query(InstanciaRed).filter_by(
+            orden_id=orden_id, tipo=red_nombre, activa=True
+        ).first()
+        if not inst_bd:
+            return False
+            
+        token_actual = self.motor.obtener_token(inst_mem_id)
+        if not token_actual:
+            return False
+            
+        lugares_con_token = [pid for pid, mark in instancia.marcado.items() if mark > 0]
+        if not lugares_con_token:
+            return False
+        lugar_actual = lugares_con_token[0]
+        lugar_actual_nombre = instancia.red.places[lugar_actual].nombre
+        
+        from modelos.Taxonomia import EtapaRuta
+        etapa = self.session.query(EtapaRuta).filter(
+            EtapaRuta.patronRuta_id == inst_bd.patron_ruta_id,
+            (EtapaRuta.nombre.like(f"%{lugar_actual_nombre}%") | 
+             EtapaRuta.nombre.like(f"%{lugar_actual}%"))
+        ).first()
+        
+        if not etapa:
+            logger.error(f"❌ No se encontró EtapaRuta para el lugar {lugar_actual}")
+            return False
+            
+        criterios = self.session.query(CriterioAceptacionEtapa).filter_by(
+            holon_ruta_id=inst_bd.holon_ruta_id,
+            etapa_ruta_id=etapa.id
+        ).all()
+        
+        aprobado = True
+        motivos_rechazo = []
+        
+        for crit in criterios:
+            espec = crit.especificacion
+            if espec.nombre in mediciones_qc:
+                val = mediciones_qc[espec.nombre]
+                if espec.limite_minimo is not None and val < espec.limite_minimo:
+                    aprobado = False
+                    motivos_rechazo.append(f"{espec.nombre} ({val}) menor que mínimo ({espec.limite_minimo})")
+                if espec.limite_maximo is not None and val > espec.limite_maximo:
+                    aprobado = False
+                    motivos_rechazo.append(f"{espec.nombre} ({val}) mayor que máximo ({espec.limite_maximo})")
+                    
+        if aprobado:
+            logger.info(f"✅ Calidad aprobada para orden {orden_id} en etapa {etapa.nombre}.")
+            trigger_evento = "201"
+            evento_nombre = "Aprobado"
+        else:
+            logger.warning(f"❌ Calidad rechazada para orden {orden_id} en etapa {etapa.nombre}. Motivo: {', '.join(motivos_rechazo)}")
+            trigger_evento = "200"
+            evento_nombre = f"Rechazado ({', '.join(motivos_rechazo)})"
+            
+        # Obtener transiciones de salida del lugar actual en la red
+        red_mem = instancia.red
+        arcos_salida = [a for a in red_mem.arcs.values() if a.source == lugar_actual]
+        transiciones_candidatas = [a.target for a in arcos_salida]
+        
+        trans_id = None
+        for tid in transiciones_candidatas:
+            if self.motor._verificar_precondiciones(instancia, tid):
+                trans_obj = red_mem.transitions[tid]
+                nombre_t = (trans_obj.nombre or tid).lower()
+                trigger_t = getattr(trans_obj, 'trigger', None)
+                
+                if aprobado:
+                    if "aprobado" in nombre_t or "ok" in nombre_t or "pass" in nombre_t or "aceptado" in nombre_t or trigger_t == "201":
+                        trans_id = tid
+                        break
+                else:
+                    if "rechazado" in nombre_t or "reproceso" in nombre_t or "fail" in nombre_t or "rechazo" in nombre_t or trigger_t == "200":
+                        trans_id = tid
+                        break
+                        
+        if not trans_id:
+            logger.error(f"❌ No se encontró transición habilitada para el resultado de calidad (aprobado={aprobado}) en lugar {lugar_actual}")
+            return False
+        
+        timestamp = datetime.now()
+        duracion_real = 0.0
+        costo_paso = 0.0
+        if token_actual.timestamp:
+            duracion_real = (timestamp - token_actual.timestamp).total_seconds()
+            costo_hora = self._obtener_costo_hora_recurso(orden_id, red_nombre, recurso_nombre)
+            costo_paso = (duracion_real / 3600.0) * costo_hora
+            token_actual.coste += costo_paso
+            token_actual.timestamp = timestamp
+            
+        resultado = self.motor.disparar_transicion_con_token(inst_mem_id, trans_id, token_actual)
+        if resultado:
+            self._persistir_evento_externo(inst_mem_id, evento_nombre, recurso_nombre, timestamp,
+                                        duracion_real, costo_paso, mediciones_qc)
+            
+            token_nuevo = self.motor.obtener_token(inst_mem_id)
+            if token_nuevo:
+                transicion_obj = instancia.red.transitions.get(trans_id)
+                if transicion_obj:
+                    self._generar_mensajes_salida(inst_mem_id, trans_id, transicion_obj, token_nuevo)
+            
+            self.estabilizar_red(orden_id)
+            self._verificar_y_finalizar_orden(orden_id)
+            return True
+            
+        return False
 
     def _obtener_transiciones_disparables_por_evento(self, instancia_mem_id: int, evento_nombre: str) -> List[str]:
         """
@@ -521,11 +690,72 @@ class Orquestador:
                 orden.fecha_fin = datetime.now()
                 self.session.commit()
                 logger.info(f"🏁 Orden {orden.numero_orden} finalizada: completada")
+                
+                # Ejecutar bucle de aprendizaje EWMA al terminar la orden
+                self.ejecutar_aprendizaje_orden(orden_id)
                 return True
         elif alguna_terminada:
             self.session.commit()
         
         return todas_terminadas
+
+    def ejecutar_aprendizaje_orden(self, orden_id: int):
+        """
+        Analiza el historial de eventos de la orden y recalcula la eficiencia
+        real de los recursos usando un suavizado EWMA (alfa = 0.2).
+        """
+        logger.info(f"🧠 Iniciando bucle de aprendizaje EWMA para orden {orden_id}...")
+        
+        eventos = self.session.query(EventoRed).filter(
+            EventoRed.orden_id == orden_id
+        ).all()
+        
+        orden = self.session.query(OrdenProduccion).get(orden_id)
+        if not orden or not orden.holon_ruta_id:
+            return
+            
+        for ev in eventos:
+            meta = ev.invariantes or {}
+            recurso_nombre = meta.get("recurso")
+            duracion_real_min = meta.get("duracion_min", 0.0)
+            
+            if not recurso_nombre or duracion_real_min <= 0.0:
+                continue
+                
+            from modelos.Recursos import Recurso
+            
+            recurso = self.session.query(Recurso).filter(
+                (Recurso.nombre == recurso_nombre) | (Recurso.codigo == recurso_nombre)
+            ).first()
+            
+            if not recurso:
+                continue
+                
+            asig = self.session.query(AsignacionRecurso).filter(
+                AsignacionRecurso.holon_ruta_id == orden.holon_ruta_id,
+                AsignacionRecurso.recurso_id == recurso.id
+            ).first()
+            
+            if not asig:
+                continue
+                
+            duracion_nominal = asig.duracion_estimada_min
+            if duracion_nominal <= 0.0:
+                continue
+                
+            # Calcular eficiencia observada en este lote
+            eficiencia_obs = duracion_nominal / duracion_real_min
+            eficiencia_obs = max(0.1, min(1.5, eficiencia_obs))
+            
+            # Recalcular usando EWMA
+            alfa = 0.2
+            eficiencia_anterior = asig.eficiencia_real if asig.eficiencia_real is not None else 1.0
+            eficiencia_nueva = (alfa * eficiencia_obs) + ((1.0 - alfa) * eficiencia_anterior)
+            
+            asig.eficiencia_real = eficiencia_nueva
+            logger.info(f"   📈 Recurso '{recurso.nombre}' recalibrado en ruta: eficiencia {eficiencia_anterior:.3f} → {eficiencia_nueva:.3f} (obs={eficiencia_obs:.3f})")
+            
+        self.session.commit()
 
     def _procesar_todos_mensajes(self, orden_id: int) -> int:
         """Procesa todos los mensajes pendientes habilitados. Retorna cantidad procesados."""
@@ -842,17 +1072,27 @@ class Orquestador:
     
     def _persistir_evento_externo(self, instancia_mem_id: int, trans_nombre: str, 
                                 recurso_nombre: str, timestamp: datetime,
-                                duracion_seg: float = None, costo_paso: float = None):
+                                duracion_seg: float = None, costo_paso: float = None,
+                                mediciones: dict = None):
         instancia_mem = self.motor.instancias.get(instancia_mem_id)
         if not instancia_mem:
             return
         
+        invariantes_dict = {
+            'tipo': 'externo', 
+            'recurso': recurso_nombre, 
+            'marcado': instancia_mem.marcado.copy(),
+            'duracion_min': (duracion_seg / 60.0) if duracion_seg else 0.0
+        }
+        if mediciones:
+            invariantes_dict['mediciones'] = mediciones
+            
         evento = EventoRed(
             orden_id=instancia_mem.orden_id,
             instancia_id=instancia_mem.bd_id,
             transicion_nombre=trans_nombre,
             timestamp=timestamp,
-            invariantes={'tipo': 'externo', 'recurso': recurso_nombre, 'marcado': instancia_mem.marcado.copy()},
+            invariantes=invariantes_dict,
             token_m=instancia_mem.token_m,
             token_c=instancia_mem.token_c,
             costo_real_paso=costo_paso

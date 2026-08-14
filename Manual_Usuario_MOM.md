@@ -56,36 +56,45 @@ Finalmente, detalle sus máquinas y operarios reales:
 ## 5. El Ciclo de Operación Diaria: De la Orden a la Entrega
 Una vez configurado el sistema, el trabajo diario es fluido y automático. El sistema se encarga de que nada se detenga.
 
-### Paso 1: El "Guion de la Sinfonía" (Su proceso en YAML)
-En FÉNIX, no dibujamos flujos complicados. Escribimos un **Guion** (en formato YAML) que le dice al sistema cómo deben coordinarse sus máquinas. 
+### Paso 1: El "Guion de la Sinfonía" (Su proceso en YAML y sus Invariantes)
+En FÉNIX, no dibujamos flujos complicados. Escribimos un **Guion** (en formato YAML) que le dice al sistema cómo deben coordinarse sus máquinas e introduce los límites de seguridad y calidad del proceso, llamados **Invariantes**. Las invariantes del proceso están fuertemente vinculadas a las capacidades del recurso que ejecuta cada etapa.
 
-Imagine el proceso del Látex Blanco como una sinfonía:
+Imagine el proceso del Látex Blanco en un dispersor:
 
 ```yaml
-# Guion simplificado para Látex
+# Guion detallado para Dispersión con Invariantes
 proceso:
   estaciones:
-    - dispersor_espera
-    - dispersor_mezclando
-    - diluidor_espera
+    - p1: "Carga de Vehículo"
+    - p2: "Dispersión de Pigmentos"
+    - p3: "Control de Calidad"
 
-  acciones:
-    iniciar_mezcla:
-      cuando: [dispersor_espera]
-      mueve_a: [dispersor_mezclando]
-      tipo: "Manual" # El operario presiona un botón
-
-    unir_con_diluidor:
-      cuando: [dispersor_mezclando, diluidor_espera]
-      mueve_a: [diluidor_recibiendo]
-      tipo: "Sincronizado" # Ambos deben estar listos
+  pasos:
+    - id: p2
+      nombre: "Dispersión de Pigmentos"
+      duracion: 30 m
+      velocidad: alta
+      # Invariantes de seguridad operativa para proteger la mezcla:
+      invariantes:
+        - parametro: "Temperatura"
+          valor_maximo: 55.0
+          unidad: "C"
+        - parametro: "Velocidad"
+          valor_minimo: 600.0
+          valor_maximo: 1200.0
+          unidad: "RPM"
 ```
 
-Este guion es lo que el sistema usa para encender las luces en su panel de control. Si el guion dice que se necesitan dos estaciones listas, el sistema esperará automáticamente por ambas.
+Este guion es lo que el sistema usa para configurar las reglas en su panel de control:
+1.  **Seguridad Física (Invariantes de Lazo Cerrado):** Cuando la máquina reporta datos en tiempo real al sistema, FÉNIX valida las mediciones. Si un sensor del dispersor reporta `Temperatura: 57.5°C` (violando el límite máximo de `55°C`), el sistema detiene inmediatamente el flujo de trabajo, bloquea el avance del lote y dispara una alarma para proteger la calidad del lote de pintura.
+2.  **Compuertas de Calidad Automáticas (QA Gates):** En los pasos de control de calidad, el laboratorio ingresa los valores de las pruebas físicas (viscosidad, pH). FÉNIX compara los resultados con los rangos admitidos:
+    *   **Si cumple:** El sistema aprueba el lote de forma automática y habilita la descarga.
+    *   **Si falla:** El sistema dispara una transición de reproceso y devuelve el lote al dispersor, registrando el tiempo y costo de este retrabajo.
 
 ### Paso 2: El Reporte en Planta (Interfaz Web)
 Sus operarios no ven el código YAML. Ellos ven una interfaz limpia con botones que corresponden a las **acciones** definidas en el guion.
 *   **Botón de Acción:** Al presionar "Iniciar Mezcla", el sistema mueve el lote digitalmente.
+*   **Lectura de Sensores:** El sistema muestra en pantalla si los parámetros de la máquina (Temperatura, RPM) están en rangos normales o si se ha activado algún bloqueo de seguridad.
 *   **Alertas de Sincronización:** Si un operario intenta mover material pero la siguiente estación no está lista (según el guion), el sistema le avisará: *"Esperando al Diluidor"*.
 
 ### Paso 3: Monitoreo en Tiempo Real y Cuellos de Botella

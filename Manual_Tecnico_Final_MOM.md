@@ -84,6 +84,18 @@ El sistema se suscribe a tags específicos para detectar eventos de:
 *   `Machine_State` (Producción, Parada, Mantenimiento).
 *   `Real_Consumption` (kWh, kg, unidades).
 
+### 3.3. Validación de Invariantes Físicos y Compuertas de Calidad (QA Loops)
+El sistema intercepta la telemetría recibida desde los PLCs o estaciones SCADA para realizar dos tipos de validación en tiempo real:
+
+1.  **Validación de Invariantes (`InvariantePaso`):** 
+    Antes del disparo de cualquier transición discreta (evento de fin de paso), el orquestador compara las lecturas físicas promediadas del paso actual (ej. `Temperatura`, `Velocidad`) contra los límites definidos en la base de datos para esa asignación de recurso. Si se detecta una violación:
+    $$\text{Lectura} > \text{valor\_maximo} \quad \text{o} \quad \text{Lectura} < \text{valor\_minimo}$$
+    El orquestador bloquea el disparo de la transición, registra la anomalía en el log de eventos (`EventoRed.invariantes`) y levanta un estado de alarma de trayectoria, evitando que un lote defectuoso progrese en la planta.
+2.  **Compuertas de Calidad Automáticas (QA Loops):**
+    En las etapas de control de calidad, cuando el laboratorio ingresa los valores de las pruebas físicas (viscosidad, pH), el orquestador los evalúa contra las especificaciones del producto (`CriterioAceptacionEtapa` y `EspecificacionCalidad`):
+    *   **Pasa (Aprobado):** Se dispara automáticamente la transición conectada de aprobación (trigger `"201"`), avanzando el lote a la etapa de envasado.
+    *   **No Pasa (Rechazado):** Se dispara automáticamente la transición de reproceso (trigger `"200"`), retornando el lote al dispersor/mezclador y forzando la acumulación de tiempos y costos de retrabajo.
+
 ---
 
 ## 4. Ingesta de Datos (Excel Parser Inteligente)
