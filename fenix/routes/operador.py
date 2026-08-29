@@ -5,7 +5,7 @@ from utils.motor_abtppn import MotorABTPPN, TokenColoreado
 from modelos.ProcesoOcurrente import OrdenProduccion, InstanciaRed, EventoRed
 from modelos.Producto import HolonRuta, Producto, AsignacionRecurso
 from modelos.Recursos import Recurso
-from servicios.planificador import PlanificadorProduccion
+from servicios.selector_ruta import SelectorRuta
 from datetime import datetime
 import json
 import os
@@ -489,7 +489,7 @@ def api_historial(orden_id):
 @operador_bp.route('/operador/api/crear_orden', methods=['POST'])
 @login_required
 def api_crear_orden():
-    """Crea una nueva orden de producción usando el Planificador y la pone en estado pendiente"""
+    """Crea una nueva orden de producción seleccionando la ruta activa (sin optimización de costo) y la pone en estado pendiente"""
     data = request.get_json()
     
     producto_id = data.get('producto_id')
@@ -504,22 +504,36 @@ def api_crear_orden():
     session = Session()
     
     try:
-        from servicios.planificador import PlanificadorProduccion
         from modelos.Producto import Producto
-        
+
         producto = session.query(Producto).get(producto_id)
         if not producto:
             session.close()
             return jsonify({'success': False, 'error': 'Producto no encontrado'}), 404
-            
-        # 1. Ejecutar el Planificador para encontrar el HolonRuta óptimo y componer la red
-        planificador = PlanificadorProduccion(session)
-        plan = planificador.seleccionar_recursos_para_orden(producto_id, cantidad, prioridad=1)
-        
-        if not plan:
+
+        # 1. Seleccionar la ruta activa para el producto (sin optimización de costo:
+        #    el módulo de planificación por costo óptimo no forma parte de este
+        #    repositorio). Se usa la asignación de recursos ya configurada de
+        #    forma estática para esa ruta (tabla AsignacionRecurso).
+        orden_temporal = OrdenProduccion(producto_id=producto_id, cantidad=cantidad, prioridad=1)
+        orden_temporal.producto = producto
+
+        ruta = SelectorRuta(session).seleccionar_ruta(orden_temporal)
+        if not ruta:
             session.close()
-            return jsonify({'success': False, 'error': 'No hay ninguna ruta o recursos disponibles para producir esta cantidad.'}), 400
-            
+            return jsonify({'success': False, 'error': 'No hay ninguna ruta disponible para producir esta cantidad.'}), 400
+
+        asignacion = {}
+        for asig in ruta.asignaciones:
+            etapa_nombre = asig.etapa.nombre
+            asignacion[etapa_nombre] = {
+                "recurso_id": asig.recurso_id,
+                "recurso_nombre": asig.recurso.nombre if asig.recurso else str(asig.recurso_id),
+            }
+        if not asignacion:
+            session.close()
+            return jsonify({'success': False, 'error': f"La ruta '{ruta.nombre}' no tiene recursos asignados."}), 400
+
         # 2. Generar número de orden único
         timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
         numero_orden = f"ORD-{timestamp_str}"
@@ -531,8 +545,8 @@ def api_crear_orden():
             cantidad=cantidad,
             plazo_entrega=datetime.fromisoformat(plazo_entrega) if plazo_entrega else datetime.now(),
             estado='pendiente',  # Dejar en pendiente para que main.py la inicialice
-            holon_ruta_id=plan['holon_ruta_id'],
-            asignacion_recursos=plan['asignacion']
+            holon_ruta_id=ruta.id,
+            asignacion_recursos=asignacion
         )
         session.add(orden)
         session.commit()

@@ -3,7 +3,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from modelos.Recursos_backup import RecursoEquipo
+from modelos.Recursos import RecursoEquipo
 
 class ServicioDisponibilidad:
     def __init__(self, session: Session):

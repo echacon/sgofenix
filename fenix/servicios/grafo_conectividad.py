@@ -2,7 +2,7 @@
 
 from typing import List, Dict, Optional, Set
 from sqlalchemy.orm import Session
-from modelos.Recursos_backup import Recurso, ConexionFisica
+from modelos.Recursos import Recurso, ConexionFisica
 
 class GrafoConectividad:
     """

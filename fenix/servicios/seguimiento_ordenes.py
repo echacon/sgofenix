@@ -12,7 +12,7 @@ from modelos.Encadenamiento import ConfiguracionEncadenamiento
 from utils.motor_abtppn import MotorABTPPN, TokenColoreado
 from servicios.orquestador import Orquestador
 from servicios.verificador_terminacion import VerificadorTerminacion
-from servicios.planificador import PlanificadorProduccion
+from servicios.selector_ruta import SelectorRuta
 
 
 class ServicioSeguimiento:
@@ -32,18 +32,48 @@ class ServicioSeguimiento:
     # ============================================================
     
     def crear_orden(self, producto_id: int, cantidad: float, prioridad: int = 1, cliente: str = None) -> OrdenProduccion:
-        planificador = PlanificadorProduccion(self.session)
-        plan = planificador.seleccionar_recursos_para_orden(producto_id, cantidad, prioridad)
-        if not plan:
-            raise ValueError("No se pudo asignar recursos para la orden")
-        
+        """
+        Crea una orden seleccionando la ruta activa mediante SelectorRuta
+        (filtrado por rango de lote, prioridad y conectividad, sin optimización
+        de costo) y toma la asignación de recursos ya configurada de forma
+        estática para esa ruta (tabla AsignacionRecurso).
+
+        NOTA: esta selección no minimiza costo entre rutas alternativas. El
+        módulo de planificación por costo óptimo (Branch-and-Bound) no forma
+        parte de este repositorio.
+        """
+        producto = self.session.query(Producto).get(producto_id)
+        if not producto:
+            raise ValueError(f"Producto {producto_id} no encontrado")
+
+        orden_temporal = OrdenProduccion(
+            producto_id=producto_id,
+            cantidad=cantidad,
+            prioridad=prioridad,
+        )
+        orden_temporal.producto = producto
+
+        ruta = SelectorRuta(self.session).seleccionar_ruta(orden_temporal)
+        if not ruta:
+            raise ValueError("No se pudo seleccionar una ruta para la orden")
+
+        asignacion = {}
+        for asig in ruta.asignaciones:
+            etapa_nombre = asig.etapa.nombre
+            asignacion[etapa_nombre] = {
+                "recurso_id": asig.recurso_id,
+                "recurso_nombre": asig.recurso.nombre if asig.recurso else str(asig.recurso_id),
+            }
+        if not asignacion:
+            raise ValueError(f"La ruta '{ruta.nombre}' no tiene recursos asignados (AsignacionRecurso)")
+
         orden = OrdenProduccion(
             producto_id=producto_id,
             cantidad=cantidad,
             prioridad=prioridad,
             cliente=cliente,
-            holon_ruta_id=plan["holon_ruta_id"],
-            asignacion_recursos=plan["asignacion"],   # ← nuevo
+            holon_ruta_id=ruta.id,
+            asignacion_recursos=asignacion,
             estado="pendiente"
         )
         self.session.add(orden)
