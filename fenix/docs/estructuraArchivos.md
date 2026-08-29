@@ -14,12 +14,12 @@ fenix
 │   main.py
 │   orden_error_dilucion.json
 │   pyproject.toml
-│   README_1.md
 │
 ├───docs
+│       DescripcionModeloProducto.md
 │       ELEMENTOS.md
-│       FILOSOFIA.md
-│       FLUJO_DATOS.md
+│       estructuraArchivos.md
+│       plan_refactorizacion.md
 │
 ├───importadores
 │   │   cargador_yaml.py
