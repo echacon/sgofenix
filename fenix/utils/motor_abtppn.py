@@ -29,6 +29,9 @@ class InstanciaRedMem:
         self.id = id
         self.red_nombre = red_nombre
         self.orden_id = orden_id
+        import json
+        if isinstance(marcado, str):
+            marcado = json.loads(marcado)
         self.marcado = marcado.copy() if marcado else {}
         self.token_o = token.orden_id
         self.token_m = token.material
@@ -40,6 +43,14 @@ class InstanciaRedMem:
         self.completada = False
         self.bloqueada = False
         self.temporizadores: Dict[str, dict] = {}
+
+    @property
+    def instancia_bd_id(self):
+        return self.bd_id
+
+    @instancia_bd_id.setter
+    def instancia_bd_id(self, val):
+        self.bd_id = val
     
     def __repr__(self):
         return f"InstanciaRedMem(id={self.id}, red={self.red_nombre}, orden={self.orden_id}, marcado={self.marcado})"

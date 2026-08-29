@@ -40,6 +40,10 @@ class RecursoEquipo(Base):
     disponible: Mapped[bool] = mapped_column(default=True)
     ultimo_mantenimiento: Mapped[Optional[str]] = mapped_column(String(20))
     
+    # Telemetría de Energía Opcional a nivel de Holón
+    medidor_energia: Mapped[bool] = mapped_column(default=False)
+    edr_actual: Mapped[Optional[float]] = mapped_column(Float, default=1.0)
+    
     # Relación con Recurso base
     recurso: Mapped["Recurso"] = relationship(back_populates="equipo", foreign_keys=[id])
 

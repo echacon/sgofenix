@@ -30,6 +30,7 @@ SessionLocal = sessionmaker(bind=engine)
 # Nota: No configuramos refinamientos ni mapeos manuales; esos vienen de BD.
 motor = MotorABTPPN()  # sin directorio PNML, porque las redes se cargan desde BD
 orquestador = Orquestador(motor, SessionLocal())
+orquestador.cargar_configuracion_desde_bd()
 
 # Registrar en app para acceso en rutas
 app.config['ENGINE'] = engine
@@ -53,7 +54,7 @@ app.register_blueprint(operador_bp)
 def index():
     if 'usuario_id' in session:
         if session.get('usuario_rol') == 'admin':
-            return redirect(url_for('carga_recursos.cargar_recursos'))
+            return redirect(url_for('operador.dashboard'))
         else:
             return redirect(url_for('operador.dashboard'))
     return redirect(url_for('auth.login'))

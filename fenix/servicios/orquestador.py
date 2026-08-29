@@ -297,7 +297,8 @@ class Orquestador:
 
     def procesar_evento_planta(self, orden_id: int, evento_nombre: str,
                             recurso_nombre: str = None, red_nombre: str = None,
-                            timestamp: datetime = None, mediciones: dict = None) -> bool:
+                            timestamp: datetime = None, mediciones: dict = None,
+                            forzar: bool = False) -> bool:
         """Procesa un evento de planta (trigger 200).
         
         Args:
@@ -307,6 +308,7 @@ class Orquestador:
             red_nombre: Nombre de la red (opcional, se deduce si no se da)
             timestamp: Momento del evento (si no se da, usa ahora)
             mediciones: Mediciones de telemetría física del SCADA (opcional)
+            forzar: Si es True, registra warnings en lugar de arrojar excepciones por violaciones de invariantes
         """
         if timestamp is None:
             timestamp = datetime.now()
@@ -363,12 +365,16 @@ class Orquestador:
                     in_places = [a.source for a in red_mem.arcs.values() if a.target == trans_id]
                     lugar_origen_nombre = red_mem.places[in_places[0]].nombre if in_places else ""
                     
-                    asig = self.session.query(AsignacionRecurso).join(EtapaRuta).filter(
+                    asigs = self.session.query(AsignacionRecurso).filter(
                         AsignacionRecurso.holon_ruta_id == inst_bd.holon_ruta_id,
-                        AsignacionRecurso.recurso_id == recurso.id,
-                        (EtapaRuta.nombre.like(f"%{lugar_origen_nombre}%") | 
-                         EtapaRuta.nombre.like(f"%{in_places[0]}%") if in_places else True)
-                    ).first()
+                        AsignacionRecurso.recurso_id == recurso.id
+                    ).all()
+                    asig = None
+                    for a in asigs:
+                        if (a.etapa.nombre.lower() in lugar_origen_nombre.lower() or 
+                            lugar_origen_nombre.lower() in a.etapa.nombre.lower()):
+                            asig = a
+                            break
                     
                     if asig:
                         invariantes = self.session.query(InvariantePaso).filter_by(
@@ -379,11 +385,17 @@ class Orquestador:
                             if inv.parametro in mediciones:
                                 val = mediciones[inv.parametro]
                                 if inv.valor_minimo is not None and val < inv.valor_minimo:
-                                    logger.error(f"❌ Invariante violado: {inv.parametro} ({val}) menor que mínimo ({inv.valor_minimo})")
-                                    raise ValueError(f"Invariante violado: {inv.parametro} fuera de rango")
+                                    if forzar:
+                                        logger.warning(f"⚠️ SUPERVISOR BYPASS: Invariante {inv.parametro} ({val}) menor que mínimo ({inv.valor_minimo})")
+                                    else:
+                                        logger.error(f"❌ Invariante violado: {inv.parametro} ({val}) menor que mínimo ({inv.valor_minimo})")
+                                        raise ValueError(f"Invariante violado: {inv.parametro} fuera de rango")
                                 if inv.valor_maximo is not None and val > inv.valor_maximo:
-                                    logger.error(f"❌ Invariante violado: {inv.parametro} ({val}) mayor que máximo ({inv.valor_maximo})")
-                                    raise ValueError(f"Invariante violado: {inv.parametro} fuera de rango")
+                                    if forzar:
+                                        logger.warning(f"⚠️ SUPERVISOR BYPASS: Invariante {inv.parametro} ({val}) mayor que máximo ({inv.valor_maximo})")
+                                    else:
+                                        logger.error(f"❌ Invariante violado: {inv.parametro} ({val}) mayor que máximo ({inv.valor_maximo})")
+                                        raise ValueError(f"Invariante violado: {inv.parametro} fuera de rango")
 
         # Obtener token actual
         token_actual = self.motor.obtener_token(inst_mem_id)
@@ -466,7 +478,15 @@ class Orquestador:
         ).first()
         
         if not etapa:
-            logger.error(f"❌ No se encontró EtapaRuta para el lugar {lugar_actual}")
+            # Fallback inteligente por nombre de red
+            etapa_codigo = "DIL" if "dil" in red_nombre.lower() else "DIS"
+            etapa = self.session.query(EtapaRuta).filter(
+                EtapaRuta.patronRuta_id == inst_bd.patron_ruta_id,
+                EtapaRuta.nombre.like(f"%{etapa_codigo}%")
+            ).first()
+            
+        if not etapa:
+            logger.error(f"❌ No se encontró EtapaRuta para el lugar {lugar_actual} en red {red_nombre}")
             return False
             
         criterios = self.session.query(CriterioAceptacionEtapa).filter_by(
@@ -503,18 +523,31 @@ class Orquestador:
         transiciones_candidatas = [a.target for a in arcos_salida]
         
         trans_id = None
+        # Primero buscar por palabra clave explícita para evitar falsos positivos
         for tid in transiciones_candidatas:
             if self.motor._verificar_precondiciones(instancia, tid):
                 trans_obj = red_mem.transitions[tid]
                 nombre_t = (trans_obj.nombre or tid).lower()
-                trigger_t = getattr(trans_obj, 'trigger', None)
                 
                 if aprobado:
-                    if "aprobado" in nombre_t or "ok" in nombre_t or "pass" in nombre_t or "aceptado" in nombre_t or trigger_t == "201":
+                    if any(k in nombre_t for k in ["aprobado", "aprobar", "ok", "pass", "aceptado", "envasar", "intermedio", "liberar", "descargar"]):
                         trans_id = tid
                         break
                 else:
-                    if "rechazado" in nombre_t or "reproceso" in nombre_t or "fail" in nombre_t or "rechazo" in nombre_t or trigger_t == "200":
+                    if any(k in nombre_t for k in ["rechazado", "rechazo", "fail", "no conforme", "ajuste", "reproceso", "descarte"]):
+                        trans_id = tid
+                        break
+                        
+        # Si no se encontró por palabra clave, usar trigger como fallback
+        if not trans_id:
+            for tid in transiciones_candidatas:
+                if self.motor._verificar_precondiciones(instancia, tid):
+                    trans_obj = red_mem.transitions[tid]
+                    trigger_t = getattr(trans_obj, 'trigger', None)
+                    if aprobado and trigger_t == "201":
+                        trans_id = tid
+                        break
+                    elif not aprobado and trigger_t == "200":
                         trans_id = tid
                         break
                         
@@ -755,85 +788,107 @@ class Orquestador:
             asig.eficiencia_real = eficiencia_nueva
             logger.info(f"   📈 Recurso '{recurso.nombre}' recalibrado en ruta: eficiencia {eficiencia_anterior:.3f} → {eficiencia_nueva:.3f} (obs={eficiencia_obs:.3f})")
             
+            # Calibración opcional del EDR a nivel de Holón Recurso
+            recurso_eq = recurso.equipo if (recurso and recurso.tipo == "equipo") else None
+            if recurso_eq and getattr(recurso_eq, 'medidor_energia', False):
+                mediciones = meta.get("mediciones", {})
+                energia_kwh_real = mediciones.get("energia_kwh")
+                if energia_kwh_real is not None:
+                    try:
+                        energia_kwh_real = float(energia_kwh_real)
+                        consumo_kw = getattr(recurso_eq, 'consumo_energia_kw', 0.0) or 0.0
+                        energia_nominal = consumo_kw * (duracion_real_min / 60.0)
+                        
+                        if energia_nominal > 0.0:
+                            edr_obs = energia_kwh_real / energia_nominal
+                            edr_obs = max(0.5, min(2.0, edr_obs))  # Límite de seguridad
+                            
+                            edr_anterior = recurso_eq.edr_actual if recurso_eq.edr_actual is not None else 1.0
+                            edr_nuevo = (alfa * edr_obs) + ((1.0 - alfa) * edr_anterior)
+                            
+                            recurso_eq.edr_actual = edr_nuevo
+                            logger.info(f"   ⚡ Holón Recurso '{recurso.nombre}' recalibrado: EDR {edr_anterior:.3f} → {edr_nuevo:.3f} (obs={edr_obs:.3f}, real={energia_kwh_real:.3f} kWh, nom={energia_nominal:.3f} kWh)")
+                    except (ValueError, TypeError) as e:
+                        logger.error(f"❌ Error al calcular EDR para recurso {recurso.nombre}: {e}")
+            
         self.session.commit()
 
     def _procesar_todos_mensajes(self, orden_id: int) -> int:
         """Procesa todos los mensajes pendientes habilitados. Retorna cantidad procesados."""
         contador = 0
+        hubo_cambios = True
         
-        while True:
-            msg = self.session.query(MensajePendiente).filter_by(
+        while hubo_cambios:
+            hubo_cambios = False
+            # Consultar todos los mensajes no consumidos para esta orden
+            mensajes = self.session.query(MensajePendiente).filter_by(
                 orden_id=orden_id, consumido=False
-            ).first()
+            ).all()
             
-            if not msg:
+            if not mensajes:
                 logger.debug("No hay mensajes pendientes")
                 break
             
-            logger.debug(f"Mensaje encontrado: {msg.red_destino}.{msg.evento}")
+            for msg in mensajes:
+                logger.debug(f"Evaluando mensaje: {msg.red_destino}.{msg.evento}")
 
-            inst_mem_id = self._buscar_instancia_red(msg.orden_id, msg.red_destino)
-            if not inst_mem_id:
-                logger.debug("Instancia en memoria no encontrada")
-                msg.consumido = True
-                self.session.commit()
-                continue
-
-            instancia = self.motor.instancias.get(inst_mem_id)
-            if not instancia:
-                logger.debug("Instancia no encontrada en motor")
-                msg.consumido = True
-                self.session.commit()
-                continue
-            
-            logger.debug(f"Instancia encontrada: {instancia.red_nombre}")
-            logger.debug(f"Marcado actual: {instancia.marcado}")
-            
-            trans_id = self._buscar_transicion_por_nombre(instancia, msg.evento)
-            if not trans_id:
-                logger.debug(f"Transición '{msg.evento}' no encontrada")
-                msg.consumido = True
-                self.session.commit()
-                continue
-
-            logger.debug(f"Transición encontrada: {trans_id}")
-            
-            if self.motor.transicion_habilitada(inst_mem_id, trans_id, tiene_mensaje_red=True):
-                logger.debug("Transición habilitada, disparando...")
-                token = TokenColoreado(
-                    orden_id=msg.datos.get('token_orden_id', f"ORD-{msg.orden_id}"),
-                    material=msg.datos.get('token_material', 0),
-                    coste=msg.datos.get('token_coste', 0),
-                    timestamp=datetime.now()
-                )
-                
-                disparo_exitoso = self.motor.disparar_transicion_con_token(inst_mem_id, trans_id, token)
-                
-                if disparo_exitoso:
-                    logger.debug("Transición disparada exitosamente")
-                    self._persistir_evento_mensaje(inst_mem_id, trans_id, msg.red_origen)
+                inst_mem_id = self._buscar_instancia_red(msg.orden_id, msg.red_destino)
+                if not inst_mem_id:
+                    logger.debug("Instancia en memoria no encontrada, descartando mensaje")
                     msg.consumido = True
                     self.session.commit()
-                    contador += 1
+                    hubo_cambios = True
+                    continue
+
+                instancia = self.motor.instancias.get(inst_mem_id)
+                if not instancia:
+                    logger.debug("Instancia no encontrada en motor, descartando mensaje")
+                    msg.consumido = True
+                    self.session.commit()
+                    hubo_cambios = True
+                    continue
+                
+                trans_id = self._buscar_transicion_por_nombre(instancia, msg.evento)
+                if not trans_id:
+                    logger.debug(f"Transición '{msg.evento}' no encontrada en {instancia.red_nombre}, descartando mensaje")
+                    msg.consumido = True
+                    self.session.commit()
+                    hubo_cambios = True
+                    continue
+
+                if self.motor.transicion_habilitada(inst_mem_id, trans_id, tiene_mensaje_red=True):
+                    logger.debug(f"Transición {trans_id} habilitada, disparando...")
+                    token = TokenColoreado(
+                        orden_id=msg.datos.get('token_orden_id', f"ORD-{msg.orden_id}"),
+                        material=msg.datos.get('token_material', 0),
+                        coste=msg.datos.get('token_coste', 0),
+                        timestamp=datetime.now()
+                    )
                     
-                    token_nuevo = self.motor.obtener_token(inst_mem_id)
-                    if token_nuevo:
-                        transicion_obj = instancia.red.transitions.get(trans_id)
-                        if transicion_obj:
-                            self._generar_mensajes_salida(inst_mem_id, trans_id, transicion_obj, token_nuevo)
+                    disparo_exitoso = self.motor.disparar_transicion_con_token(inst_mem_id, trans_id, token)
                     
-                    logger.debug(f"Mensaje procesado: {msg.red_destino}.{msg.evento}")
-                    self._verificar_y_finalizar_orden(msg.orden_id)
+                    if disparo_exitoso:
+                        logger.debug("Transición disparada exitosamente")
+                        self._persistir_evento_mensaje(inst_mem_id, trans_id, msg.red_origen)
+                        msg.consumido = True
+                        self.session.commit()
+                        contador += 1
+                        hubo_cambios = True
+                        
+                        token_nuevo = self.motor.obtener_token(inst_mem_id)
+                        if token_nuevo:
+                            transicion_obj = instancia.red.transitions.get(trans_id)
+                            if transicion_obj:
+                                self._generar_mensajes_salida(inst_mem_id, trans_id, transicion_obj, token_nuevo)
+                        
+                        logger.debug(f"Mensaje procesado: {msg.red_destino}.{msg.evento}")
+                        self._verificar_y_finalizar_orden(msg.orden_id)
+                        # Rompemos el bucle interno para volver a consultar la lista actualizada
+                        break
+                    else:
+                        logger.debug("Fallo al disparar transición habilitada")
                 else:
-                    logger.debug("Fallo al disparar transición")
-                    break
-            else:
-                logger.debug("Transición NO habilitada")
-                entradas = self.motor._obtener_entradas_y_pesos(instancia, trans_id)
-                for lugar, peso in entradas.items():
-                    tiene = instancia.marcado.get(lugar, 0)
-                    logger.debug(f"      {lugar}: necesita {peso}, tiene {tiene}")
-                break
+                    logger.debug(f"Transición {trans_id} NO habilitada en {instancia.red_nombre}")
         
         return contador
 
@@ -1035,8 +1090,10 @@ class Orquestador:
         return None
     
     def _buscar_transicion_por_nombre(self, instancia, nombre: str) -> Optional[str]:
+        nombre_norm = nombre.strip().lower() if nombre else ""
         for trans_id, transicion in instancia.red.transitions.items():
-            if transicion.nombre == nombre:
+            nombre_trans = transicion.nombre.strip().lower() if transicion.nombre else ""
+            if nombre_trans == nombre_norm:
                 return trans_id
         return None
     

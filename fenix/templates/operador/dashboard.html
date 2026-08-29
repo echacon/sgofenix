@@ -3,31 +3,32 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h1 class="mb-4">🏭 Panel del Operador - FENIX LITE</h1>
+    <h1 class="mb-4">🏭 Panel del Operador - FÉNIX</h1>
     
     <!-- Barra de herramientas -->
     <div class="row mb-4">
         <div class="col-md-6">
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nuevaOrdenModal">
+            <button class="btn btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#nuevaOrdenModal">
                 ➕ Nueva Orden
             </button>
-            <button class="btn btn-secondary" onclick="cargarOrdenes()">
+            <button class="btn btn-secondary shadow-sm" onclick="cargarOrdenes()">
                 🔄 Refrescar
             </button>
         </div>
         <div class="col-md-6">
-            <div class="alert alert-info" id="statusAlert" style="display: none;">
+            <div class="alert alert-info" id="statusAlert" style="display: none; transition: all 0.3s ease;">
                 <span id="statusMessage"></span>
             </div>
         </div>
     </div>
     
-    <!-- Órdenes Activas -->
+    <!-- Órdenes Activas y Panel de Aprendizaje -->
     <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    📋 Órdenes Activas
+        <!-- Órdenes -->
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white font-weight-bold">
+                    📋 Órdenes Activas de Producción
                 </div>
                 <div class="card-body" id="ordenesContainer">
                     <div class="text-center py-5">
@@ -39,6 +40,42 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Sidebar de Calibración y Alertas -->
+        <div class="col-md-4">
+            <!-- Tabla de Aprendizaje -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-dark text-white font-weight-bold">
+                    🧠 Calibración de Recursos (Aprendizaje)
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Recurso</th>
+                                <th class="text-end">Eficiencia Real</th>
+                            </tr>
+                        </thead>
+                        <tbody id="eficienciasTableBody">
+                            <tr>
+                                <td colspan="2" class="text-center text-muted">Cargando eficiencias...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <small class="text-muted d-block mt-2">La eficiencia real se autocalibra dinámicamente con EWMA ($\alpha=0.2$) tras finalizar cada orden en planta.</small>
+                </div>
+            </div>
+            
+            <!-- Historial de Alertas -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white font-weight-bold">
+                    🚨 Registro de Telemetría y Bloqueos
+                </div>
+                <div class="card-body bg-light" id="alertasHistorial" style="max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 0.82rem;">
+                    <div class="text-muted">Ningún evento reportado aún en esta sesión.</div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- Modal para Nueva Orden -->
@@ -46,36 +83,31 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">➕ Nueva Orden de Producción</h5>
+                    <h5 class="modal-title">➕ Nueva Orden de Producción (Planificador Fénix)</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="nuevaOrdenForm">
                         <div class="mb-3">
-                            <label class="form-label">Holon Ruta ID</label>
-                            <input type="number" class="form-control" name="holon_ruta_id" required>
+                            <label class="form-label">Producto a Fabricar</label>
+                            <select class="form-select" name="producto_id" id="nuevaOrdenProducto" required>
+                                <option value="">Cargando productos...</option>
+                            </select>
+                            <small class="text-muted">El planificador de Fénix compondrá selectivamente la red del proceso (poda de molienda si no hay sólidos) y seleccionará la ruta óptima de menor costo.</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Cantidad (kg/L)</label>
-                            <input type="number" class="form-control" name="cantidad" step="0.01" required>
+                            <input type="number" class="form-control" name="cantidad" value="1000" step="100" min="1" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Plazo de Entrega</label>
-                            <input type="datetime-local" class="form-control" name="plazo_entrega" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Red PNML</label>
-                            <select class="form-control" name="red_pnml" required>
-                                <option value="Pintuco_BaseAgua_Dis_Dil_IntegracionRedes_V4.pnml">
-                                    Integración Redes V4
-                                </option>
-                            </select>
+                            <input type="datetime-local" class="form-control" id="nuevaOrdenPlazo" name="plazo_entrega" required>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="crearOrden()">Crear Orden</button>
+                    <button type="button" class="btn btn-primary" onclick="crearOrden()">⚡ Planificar y Crear</button>
                 </div>
             </div>
         </div>
@@ -86,35 +118,56 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">⚡ Disparar Transición</h5>
+                    <h5 class="modal-title" id="dispararModalTitulo">⚡ Reportar Evento de Piso</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="dispararForm">
                         <input type="hidden" name="instancia_id" id="dispararInstanciaId">
                         <input type="hidden" name="transicion_id" id="dispararTransicionId">
+                        <input type="hidden" name="lugar_nombre" id="dispararLugarNombre">
                         
                         <div class="mb-3">
-                            <label class="form-label">Transición</label>
-                            <input type="text" class="form-control" id="dispararTransicionNombre" readonly>
+                            <label class="form-label">Operación / Transición</label>
+                            <input type="text" class="form-control bg-light" id="dispararTransicionNombre" readonly>
                         </div>
                         
-                        <div class="mb-3">
-                            <label class="form-label">📝 Invariantes (datos del proceso)</label>
-                            <textarea class="form-control" id="invariantes" rows="3" 
-                                placeholder='{"temperatura": 25.5, "operario": "Juan", "lote": "L001"}'></textarea>
-                            <small class="text-muted">Ingresar JSON con datos capturados</small>
+                        <!-- Telemetría física para chequeo de invariantes -->
+                        <div id="telemetriaSeccion" class="border rounded p-3 mb-3 bg-light">
+                            <h6>📊 Telemetría del SCADA (Verificación de Invariantes)</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label small text-muted">Temperatura (°C)</label>
+                                    <input type="number" class="form-control form-control-sm" id="medicionTemp" value="50.0" step="0.5">
+                                    <small class="text-muted" style="font-size: 0.75rem;">Límite admisible: ≤ 55°C</small>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label small text-muted">Velocidad (RPM)</label>
+                                    <input type="number" class="form-control form-control-sm" id="medicionVel" value="800" step="50">
+                                    <small class="text-muted" style="font-size: 0.75rem;">Velocidad agitación del agitador</small>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="alert alert-warning" id="dispararPreview">
-                            <!-- Preview del token antes/después -->
+                        <!-- Formulario de Laboratorio para Compuertas de Calidad -->
+                        <div id="calidadSeccion" class="border border-info rounded p-3 mb-3 bg-light" style="display: none;">
+                            <h6 class="text-info">🧪 Resultados del Laboratorio (QA Gate)</h6>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">Viscosidad KU (Especificación: 90.0 - 100.0 KU)</label>
+                                <input type="number" class="form-control" id="medicionVisc" value="95.0" step="0.5">
+                                <small class="text-muted" style="font-size: 0.73rem; display: block;">Si la lectura está fuera del rango especificado, Fénix rechazará el lote y activará el reproceso.</small>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info py-2 small" id="dispararPreview">
+                            <!-- Preview del token -->
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-danger" onclick="ejecutarDisparo()">
-                        🚀 Disparar
+                        🚀 Enviar a Fénix
                     </button>
                 </div>
             </div>
@@ -123,12 +176,32 @@
 </div>
 
 <script>
+    let productosCargados = false;
+
     // Cargar órdenes al iniciar
     document.addEventListener('DOMContentLoaded', function() {
+        // Establecer fecha por defecto en modal de creación (24h en el futuro)
+        const plazoInput = document.getElementById('nuevaOrdenPlazo');
+        const manana = new Date();
+        manana.setDate(manana.getDate() + 1);
+        manana.setMinutes(manana.getMinutes() - manana.getTimezoneOffset());
+        plazoInput.value = manana.toISOString().slice(0, 16);
+        
         cargarOrdenes();
-        // Refrescar cada 10 segundos
-        setInterval(cargarOrdenes, 10000);
+        // Refrescar cada 5 segundos
+        setInterval(cargarOrdenes, 5000);
     });
+    
+    function registrarAlertaLog(mensaje, esError=false) {
+        const log = document.getElementById('alertasHistorial');
+        if (log.innerHTML.includes("Ningún evento")) {
+            log.innerHTML = "";
+        }
+        const timeStr = new Date().toLocaleTimeString();
+        const color = esError ? "text-danger" : "text-success";
+        const prefix = esError ? "⚠️ [BLOQUEO] " : "ℹ️ [OK] ";
+        log.innerHTML = `<div class="mb-1 ${color}"><strong>${timeStr}</strong> - ${prefix}${mensaje}</div>` + log.innerHTML;
+    }
     
     function cargarOrdenes() {
         fetch('/operador/api/ordenes_activas')
@@ -136,14 +209,48 @@
             .then(data => {
                 if (data.success) {
                     renderizarOrdenes(data.ordenes);
+                    renderizarEficiencias(data.eficiencias);
+                    
+                    if (!productosCargados && data.productos) {
+                        renderizarProductosSelector(data.productos);
+                        productosCargados = true;
+                    }
                 } else {
                     mostrarError(data.error);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                mostrarError('Error al cargar órdenes');
+                mostrarError('Error al conectar con el servidor');
             });
+    }
+    
+    function renderizarProductosSelector(productos) {
+        const select = document.getElementById('nuevaOrdenProducto');
+        select.innerHTML = '<option value="">Seleccione un producto...</option>';
+        for (const p of productos) {
+            select.innerHTML += `<option value="${p.id}">${p.codigo} - ${p.nombre}</option>`;
+        }
+    }
+    
+    function renderizarEficiencias(eficiencias) {
+        const tbody = document.getElementById('eficienciasTableBody');
+        if (!eficiencias || Object.keys(eficiencias).length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">Sin datos de recursos</td></tr>';
+            return;
+        }
+        
+        let html = '';
+        for (const [recurso, eficiencia] of Object.entries(eficiencias)) {
+            const colorClass = eficiencia >= 0.95 ? 'text-success' : (eficiencia >= 0.85 ? 'text-warning' : 'text-danger');
+            html += `
+                <tr>
+                    <td><strong>${recurso}</strong></td>
+                    <td class="text-end font-monospace ${colorClass}"><strong>${(eficiencia * 100).toFixed(1)}%</strong></td>
+                </tr>
+            `;
+        }
+        tbody.innerHTML = html;
     }
     
     function renderizarOrdenes(ordenes) {
@@ -151,9 +258,9 @@
         
         if (ordenes.length === 0) {
             container.innerHTML = `
-                <div class="alert alert-info text-center">
-                    <i class="bi bi-info-circle"></i> No hay órdenes activas en este momento.
-                    <br>Use el botón "Nueva Orden" para iniciar producción.
+                <div class="alert alert-info text-center py-4 mb-0">
+                    <i class="bi bi-info-circle"></i> No hay órdenes de producción activas en este momento.
+                    <br><span class="small">Use el botón "Nueva Orden" para planificar un lote con mermas y costeo ABC.</span>
                 </div>
             `;
             return;
@@ -161,58 +268,72 @@
         
         let html = '';
         for (const orden of ordenes) {
+            let statusBadge = 'bg-secondary';
+            if (orden.estado === 'en_proceso') statusBadge = 'bg-success';
+            if (orden.estado === 'pendiente') statusBadge = 'bg-warning text-dark';
+            if (orden.estado === 'completada') statusBadge = 'bg-info';
+            
             html += `
-                <div class="card mb-3">
-                    <div class="card-header bg-light">
-                        <strong>📦 Orden #${orden.id}</strong> - ${orden.producto_nombre}
-                        <span class="badge ${orden.estado === 'en_proceso' ? 'bg-success' : 'bg-warning'} float-end">
-                            ${orden.estado}
-                        </span>
+                <div class="card mb-3 border-light shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center bg-light py-2">
+                        <span><strong>📦 Orden: ${orden.numero_orden}</strong> (ID: ${orden.id}) - <span class="text-primary">${orden.producto_nombre}</span></span>
+                        <span class="badge ${statusBadge}">${orden.estado.toUpperCase()}</span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body py-3">
                         <div class="row">
                             <div class="col-md-4">
-                                <small class="text-muted">Cantidad:</small>
-                                <strong>${orden.cantidad.toLocaleString()} kg</strong><br>
-                                <small class="text-muted">Plazo:</small>
-                                ${new Date(orden.plazo_entrega).toLocaleString()}
+                                <small class="text-muted d-block">Cantidad Planificada:</small>
+                                <strong>${orden.cantidad.toLocaleString()} kg</strong>
+                                <small class="text-muted d-block mt-2">Plazo Entrega:</small>
+                                <span>${new Date(orden.plazo_entrega).toLocaleString()}</span>
                             </div>
-                            <div class="col-md-4">
-                                <small class="text-muted">Material procesado:</small>
-                                <strong>${orden.instancias[0]?.token_m?.toLocaleString() || 0} kg</strong><br>
-                                <small class="text-muted">Coste acumulado:</small>
-                                <strong>$${orden.instancias[0]?.token_c?.toFixed(2) || 0}</strong>
+                            <div class="col-md-4 border-start">
+                                <small class="text-muted d-block">Material en Proceso:</small>
+                                <strong>${orden.instancias[0]?.token_m ? orden.instancias[0].token_m.toFixed(2) + " kg" : "0.00 kg"}</strong>
+                                <small class="text-muted d-block mt-2">Costo ABC Proyectado:</small>
+                                <span class="text-success font-weight-bold">$${orden.instancias[0]?.token_c ? orden.instancias[0].token_c.toFixed(2) : "0.00"}</span>
                             </div>
-                            <div class="col-md-4">
-                                <small class="text-muted">Instancias activas:</small>
+                            <div class="col-md-4 border-start">
+                                <small class="text-muted d-block">Instancias Activas (Petri):</small>
                                 <strong>${orden.instancias_activas}</strong>
+                                <small class="text-muted d-block mt-2">Creada:</small>
+                                <span>${new Date(orden.fecha_creacion).toLocaleString()}</span>
                             </div>
                         </div>
                         
-                        <hr>
-                        
-                        <h6>📊 Instancias en ejecución:</h6>
-                        ${orden.instancias.map(inst => `
-                            <div class="border rounded p-2 mb-2">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <strong>${inst.tipo === 'padre' ? '🏭 Red Principal' : '🔧 Subproceso'}</strong>
-                                        <br>
-                                        <small class="text-muted">ID: ${inst.id}</small>
+                        ${orden.instancias.length > 0 ? `
+                            <hr class="my-3">
+                            <h6 class="text-muted mb-2" style="font-size: 0.85rem;">📊 Redes de Petri Activas (MES Holónico):</h6>
+                            ${orden.instancias.map(inst => {
+                                const lugaresToken = Object.keys(inst.marcado).filter(k => inst.marcado[k] > 0);
+                                const lugarActivo = lugaresToken[0] || "N/A";
+                                const esCalidad = lugarActivo.toLowerCase().includes("calidad") || lugarActivo.toLowerCase().includes("qc");
+                                
+                                return `
+                                    <div class="border rounded p-2 mb-2 bg-light">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-3">
+                                                <span class="badge bg-secondary font-monospace" style="font-size: 0.72rem;">${inst.tipo.toUpperCase()}</span>
+                                                <div class="small text-muted mt-1">Lugar Activo: <strong>${lugarActivo}</strong></div>
+                                            </div>
+                                            <div class="col-md-6 border-start">
+                                                <div class="small text-muted">Marcado Completo:</div>
+                                                <code class="small text-dark">${JSON.stringify(inst.marcado)}</code>
+                                                ${esCalidad ? `
+                                                    <div class="mt-1"><span class="badge bg-info text-white">🧪 Esperando Ensayos de Calidad</span></div>
+                                                ` : ''}
+                                            </div>
+                                            <div class="col-md-3 text-end">
+                                                <button class="btn btn-sm ${esCalidad ? 'btn-info text-white' : 'btn-primary'} w-100 shadow-sm" 
+                                                    onclick="verTransiciones(${inst.id}, '${lugarActivo}')">
+                                                    ⚡ Acciones
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <small class="text-muted">Marcado:</small>
-                                        <code>${JSON.stringify(inst.marcado)}</code>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <button class="btn btn-sm btn-primary w-100" 
-                                            onclick="verTransiciones(${inst.id})">
-                                            ⚡ Ver acciones disponibles
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
+                                `;
+                            }).join('')}
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -221,43 +342,42 @@
         container.innerHTML = html;
     }
     
-    function verTransiciones(instanciaId) {
+    function verTransiciones(instanciaId, lugarActivo) {
         fetch(`/operador/api/instancia/${instanciaId}/transiciones`)
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.transiciones.length > 0) {
-                    mostrarSelectorTransiciones(instanciaId, data.transiciones);
+                    mostrarSelectorTransiciones(instanciaId, data.transiciones, lugarActivo);
                 } else {
-                    mostrarError('No hay transiciones habilitadas en este momento');
+                    mostrarError('No hay transiciones habilitadas en este momento. Fénix está procesando u orden terminada.');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                mostrarError('Error al obtener transiciones');
+                mostrarError('Error al obtener transiciones del orquestador');
             });
     }
     
-    function mostrarSelectorTransiciones(instanciaId, transiciones) {
-        // Crear modal dinámico para seleccionar transición
+    function mostrarSelectorTransiciones(instanciaId, transiciones, lugarActivo) {
         let modalHtml = `
             <div class="modal fade" id="selectorTransicionesModal" tabindex="-1">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title">⚡ Seleccionar Transición</h5>
+                            <h5 class="modal-title">⚡ Seleccionar Acción en ${lugarActivo}</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            <p>Instancia ID: ${instanciaId}</p>
-                            <div class="list-group">
+                            <p class="small text-muted">La Red de Petri de Fénix habilita las siguientes transiciones lógicas desde su estado actual:</p>
+                            <div class="list-group shadow-sm">
         `;
         
         for (const trans of transiciones) {
             modalHtml += `
-                <button class="list-group-item list-group-item-action" 
-                    onclick="prepararDisparo(${instanciaId}, '${trans.id}', '${trans.nombre}')">
-                    <strong>⚡ ${trans.nombre}</strong>
-                    <small class="text-muted">(${trans.id})</small>
+                <button class="list-group-item list-group-item-action list-group-item-light d-flex justify-content-between align-items-center" 
+                    onclick="prepararDisparo(${instanciaId}, '${trans.id}', '${trans.nombre}', '${lugarActivo}')">
+                    <span><strong>⚡ ${trans.nombre}</strong> <small class="text-muted">(${trans.id})</small></span>
+                    <span class="badge bg-secondary pill">Reportar</span>
                 </button>
             `;
         }
@@ -265,43 +385,52 @@
         modalHtml += `
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <div class="modal-footer py-2">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                         </div>
                     </div>
                 </div>
             </div>
         `;
         
-        // Remover modal existente si hay
         const existingModal = document.getElementById('selectorTransicionesModal');
-        if (existingModal) {
-            existingModal.remove();
-        }
+        if (existingModal) existingModal.remove();
         
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
         const modal = new bootstrap.Modal(document.getElementById('selectorTransicionesModal'));
         modal.show();
         
-        // Limpiar al cerrar
         document.getElementById('selectorTransicionesModal').addEventListener('hidden.bs.modal', function() {
             this.remove();
         });
     }
     
-    function prepararDisparo(instanciaId, transicionId, transicionNombre) {
+    function prepararDisparo(instanciaId, transicionId, transicionNombre, lugarActivo) {
         // Cerrar modal de selección
         const selectorModal = bootstrap.Modal.getInstance(document.getElementById('selectorTransicionesModal'));
         if (selectorModal) selectorModal.hide();
         
-        // Abrir modal de disparo
+        // Cargar variables en modal de disparo
         document.getElementById('dispararInstanciaId').value = instanciaId;
         document.getElementById('dispararTransicionId').value = transicionId;
         document.getElementById('dispararTransicionNombre').value = transicionNombre;
-        document.getElementById('invariantes').value = '{}';
+        document.getElementById('dispararLugarNombre').value = lugarActivo;
         
-        // Cargar preview del estado actual
+        const esCalidad = lugarActivo.toLowerCase().includes("calidad") || lugarActivo.toLowerCase().includes("qc");
+        const seccionTelemetria = document.getElementById('telemetriaSeccion');
+        const seccionCalidad = document.getElementById('calidadSeccion');
+        const modalTitulo = document.getElementById('dispararModalTitulo');
+        
+        if (esCalidad) {
+            seccionTelemetria.style.display = 'none';
+            seccionCalidad.style.display = 'block';
+            modalTitulo.innerText = "🧪 Registrar Ensayos de Laboratorio";
+        } else {
+            seccionTelemetria.style.display = 'block';
+            seccionCalidad.style.display = 'none';
+            modalTitulo.innerText = "⚡ Reportar Telemetría SCADA";
+        }
+        
         cargarPreviewEstado(instanciaId);
         
         const modal = new bootstrap.Modal(document.getElementById('dispararModal'));
@@ -316,40 +445,43 @@
                     const estado = data.estado;
                     const preview = document.getElementById('dispararPreview');
                     preview.innerHTML = `
-                        <strong>Estado actual:</strong><br>
-                        Material: ${estado.token_m?.toLocaleString() || 0} kg<br>
-                        Coste: $${estado.token_c?.toFixed(2) || 0}<br>
-                        Marcado: <code>${JSON.stringify(estado.marcado)}</code>
+                        <strong>Lote actual:</strong> ${estado.token_m ? estado.token_m.toFixed(2) + " kg" : "0.00 kg"} | 
+                        <strong>Costo acumulado:</strong> $${estado.token_c ? estado.token_c.toFixed(2) : "0.00"}
                     `;
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+            .catch(error => console.error('Error:', error));
     }
     
     function ejecutarDisparo() {
         const instanciaId = document.getElementById('dispararInstanciaId').value;
         const transicionId = document.getElementById('dispararTransicionId').value;
-        let invariantes = {};
+        const lugarActivo = document.getElementById('dispararLugarNombre').value;
         
-        try {
-            const invariantesText = document.getElementById('invariantes').value;
-            invariantes = JSON.parse(invariantesText);
-        } catch(e) {
-            mostrarError('Invariantes no es JSON válido. Usando {}');
+        const esCalidad = lugarActivo.toLowerCase().includes("calidad") || lugarActivo.toLowerCase().includes("qc");
+        
+        let url = '/operador/api/disparar';
+        let bodyObj = {
+            instancia_id: parseInt(instanciaId),
+            transicion_id: transicionId
+        };
+        
+        if (esCalidad) {
+            url = '/operador/api/control_calidad';
+            bodyObj.mediciones_qc = {
+                "Viscosidad KU": parseFloat(document.getElementById('medicionVisc').value)
+            };
+        } else {
+            bodyObj.invariantes = {
+                "Temperatura": parseFloat(document.getElementById('medicionTemp').value),
+                "Velocidad": parseFloat(document.getElementById('medicionVel').value)
+            };
         }
         
-        fetch('/operador/api/disparar', {
+        fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                instancia_id: parseInt(instanciaId),
-                transicion_id: transicionId,
-                invariantes: invariantes
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyObj)
         })
         .then(response => response.json())
         .then(data => {
@@ -358,9 +490,11 @@
             
             if (data.success) {
                 mostrarExito(data.mensaje);
-                cargarOrdenes();  // Recargar
+                registrarAlertaLog(data.mensaje, false);
+                cargarOrdenes();
             } else {
-                mostrarError(data.mensaje || 'Error al disparar');
+                mostrarError(data.mensaje || 'Error al disparar la acción');
+                registrarAlertaLog(data.mensaje || 'Error al disparar la acción', true);
             }
         })
         .catch(error => {
@@ -374,17 +508,14 @@
         const formData = new FormData(form);
         
         const data = {
-            holon_ruta_id: parseInt(formData.get('holon_ruta_id')),
+            producto_id: parseInt(formData.get('producto_id')),
             cantidad: parseFloat(formData.get('cantidad')),
-            plazo_entrega: formData.get('plazo_entrega'),
-            red_pnml: formData.get('red_pnml')
+            plazo_entrega: formData.get('plazo_entrega')
         };
         
         fetch('/operador/api/crear_orden', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         })
         .then(response => response.json())
@@ -394,6 +525,7 @@
             
             if (data.success) {
                 mostrarExito(data.mensaje);
+                registrarAlertaLog(`Orden ${data.numero_orden} planificada exitosamente`, false);
                 cargarOrdenes();
                 form.reset();
             } else {
@@ -402,30 +534,26 @@
         })
         .catch(error => {
             console.error('Error:', error);
-            mostrarError('Error al crear orden');
+            mostrarError('Error al planificar y crear la orden');
         });
     }
     
     function mostrarExito(mensaje) {
         const alert = document.getElementById('statusAlert');
         const span = document.getElementById('statusMessage');
-        alert.className = 'alert alert-success';
+        alert.className = 'alert alert-success shadow-sm';
         span.innerText = mensaje;
         alert.style.display = 'block';
-        setTimeout(() => {
-            alert.style.display = 'none';
-        }, 3000);
+        setTimeout(() => { alert.style.display = 'none'; }, 6000);
     }
     
     function mostrarError(mensaje) {
         const alert = document.getElementById('statusAlert');
         const span = document.getElementById('statusMessage');
-        alert.className = 'alert alert-danger';
+        alert.className = 'alert alert-danger shadow-sm';
         span.innerText = mensaje;
         alert.style.display = 'block';
-        setTimeout(() => {
-            alert.style.display = 'none';
-        }, 5000);
+        setTimeout(() => { alert.style.display = 'none'; }, 8000);
     }
 </script>
 {% endblock %}

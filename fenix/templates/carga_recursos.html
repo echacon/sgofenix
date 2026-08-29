@@ -11,10 +11,10 @@
         </div>
         <div class="card-body">
             <ol>
-                <li>Descargue la <a href="/static/plantillas/01_recursos.xlsx">plantilla Excel</a></li>
-                <li>Llénela con sus datos (siga las instrucciones de la hoja)</li>
+                <li>Descargue la <a href="/cargar/recursos/plantilla">plantilla YAML (recursos.yaml)</a></li>
+                <li>Modifíquela con sus datos de recursos (siga el formato estructurado)</li>
                 <li>Guarde el archivo y súbalo aquí</li>
-                <li>El sistema validará línea por línea</li>
+                <li>El sistema validará la estructura y cargará los recursos</li>
             </ol>
         </div>
     </div>
@@ -26,8 +26,8 @@
         <div class="card-body">
             <form method="POST" enctype="multipart/form-data">
                 <div class="mb-3">
-                    <label for="archivo" class="form-label">Archivo Excel (01_recursos.xlsx)</label>
-                    <input type="file" class="form-control" id="archivo" name="archivo" accept=".xlsx,.xls" required>
+                    <label for="archivo" class="form-label">Archivo YAML (recursos.yaml)</label>
+                    <input type="file" class="form-control" id="archivo" name="archivo" accept=".yaml,.yml" required>
                 </div>
                 <button type="submit" class="btn btn-primary">Validar e Importar</button>
             </form>

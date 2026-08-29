@@ -102,7 +102,10 @@ class VerificadorTerminacion:
         return {"terminada": False, "razon": "Hay instancias en curso"}
     
     def instancia_terminada(self, instancia: InstanciaRed) -> Dict:
+        import json
         marcado = instancia.marcado or {}
+        if isinstance(marcado, str):
+            marcado = json.loads(marcado)
         
         # 1. Intentar obtener metadatos explícitos
         terminales = self.obtener_estados_terminales_de_red(instancia.tipo)
