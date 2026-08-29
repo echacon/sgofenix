@@ -7,7 +7,7 @@ name = "fenix"
 version = "0.1.0"
 description = "Sistema de seguimiento de producción basado en Redes de Petri Coloreadas y arquitectura Holónica"
 readme = "README.md"
-license = {text = "GPL-3.0"}   # ajusta si prefieres MIT, Apache-2.0, etc.
+license = {text = "AGPL-3.0-only"}
 requires-python = ">=3.10"
 
 authors = [
@@ -29,7 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Operating System :: OS Independent",
 ]
 

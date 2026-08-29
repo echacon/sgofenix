@@ -1,74 +1,128 @@
-# Fénix: A Holonic MOM System with Activity-Based Timed Place Petri Nets
+# Fénix: sistema MOM holónico para PyMEs, basado en Redes de Petri
 
-Fénix is a lightweight **Manufacturing Operations Management (MOM)** system designed specifically for Small and Medium-sized Enterprises (SMEs). It implements a **holonic Product-Process-Resource (PPR)** architecture and uses **Activity-Based Timed Place Petri Nets (AB-TPPNs)** as its execution tracking and cost-optimal scheduling engine.
+Fénix es un sistema ligero de **Gestión de Operaciones de Manufactura (MOM)** pensado para pequeñas y medianas empresas industriales. Modela la planta como una red de agentes autónomos (holones) que representan recursos, productos y órdenes, y usa **Redes de Petri** como motor de seguimiento y programación de la producción al menor costo posible.
 
----
-
-## 📖 Scientific Publications
-
-Fénix is developed as part of an academic research project at **Universidad de los Andes (ULA), Mérida, Venezuela**. Its theoretical bases and empirical results are detailed in two companion articles:
-
-1.  **Part I: Conceptual Bases and Optimization**  
-    *Title:* "A Holonic PPR Framework and Petri Net Formalism for Cost-Optimal Production Scheduling in SMEs"  
-    *Focus:* Formal definition of the AB-TPPN mathematical model, path-dependence of production costs under resource yield limits, and the Branch-and-Bound scheduling engine.
-2.  **Part II: SCADA Integration and Empirical Validation**  
-    *Title:* "SCADA-Driven Model Calibration, Condition Monitoring, and Empirical Cost Verification in Holonic Manufacturing"  
-    *Focus:* Real-time parameter calibration using live SCADA timestamps via an EWMA estimator, non-intrusive degradation tracking using the Energy Deviation Ratio (EDR), and validation on a 14-month dataset of 10,089 production orders.
+> ¿Primera vez aquí? Sigue el orden de este README: instalación → conceptos clave → cómo configurar tu planta → dónde profundizar según tu rol.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Instalación
 
-*   **Distributed Autonomy (Holonic Design):** Replaces rigid hierarchical vertical control (classic ISA-95) with cooperative, autonomous agents representing Resources, Products, and Orders.
-*   **Cost-Optimal Scheduling:** Minimizes true production cost (Energy, Labor, Depreciation, and Material Yield Loss) under a hard delivery deadline.
-*   **SCADA-Driven Calibration:** Automatically calibrates nominal processing durations and energy rates from shop-floor execution logs using a dual-timescale EWMA loop.
-*   **Non-Intrusive Condition Monitoring:** Detects resource wear and tear through an Energy Deviation Ratio (EDR) and automatically adjust resource competitiveness.
-*   **High Resiliency (Fault-Tolerance):** State recovery reconstructed automatically from transactional database Petri markings in case of server failures.
+```bash
+# Clonar el repositorio
+git clone https://github.com/echacon/sgofenix.git
+cd sgofenix/fenix
 
----
+# Crear entorno virtual
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-## 🛠️ Getting Started (For Enterprises)
+# Instalar dependencias
+pip install -e ".[dev]"
 
-Fénix is designed to be accessible to plant engineers without formal programming or Petri net expertise. The plant configuration is specified through two simple interfaces:
+# Inicializar base de datos
+python scripts/migraciones/inicializar_sistema.py
 
-1.  **Static Data (Excel Templates):**
-    Specify resources (machines, operators, hourly cost rates), product taxonomies, and bills of materials (BOM) in a standard Excel spreadsheet.
-2.  **Process Flow Logic (YAML Scripts):**
-    Write a simple YAML file declaring the operational steps and coordination handshakes:
-    ```yaml
-    proceso:
-      estaciones:
-        - dispersor_espera
-        - dispersor_mezclando
-        - diluidor_espera
-      acciones:
-        iniciar_mezcla:
-          cuando: [dispersor_espera]
-          mueve_a: [dispersor_mezclando]
-          tipo: "Manual"
-        unir_con_diluidor:
-          cuando: [dispersor_mezclando, diluidor_espera]
-          mueve_a: [diluidor_recibiendo]
-          tipo: "Sincronizado"
-    ```
+# Cargar configuración inicial
+python scripts/carga_inicial.py
+```
 
----
+## ▶️ Ejecución
 
-## 📂 Repository Structure
+Se necesitan **dos procesos corriendo en paralelo**:
 
-*   [`fenix/`](file:///C:/Users/echac/Documents/gemini/sgo/fenix/): Source code of the Python execution engine, database schemas, and web interfaces.
-    *   [`servicios/`](file:///C:/Users/echac/Documents/gemini/sgo/fenix/servicios/): Orchestrator, scheduler, and resource condition validator.
-    *   [`utils/motor_abtppn.py`](file:///C:/Users/echac/Documents/gemini/sgo/fenix/utils/motor_abtppn.py): Mathematical Petri net simulation engine.
-*   [`Filosofia_Integracion_Holonica.md`](file:///C:/Users/echac/Documents/gemini/sgo/Filosofia_Integracion_Holonica.md): Introductory philosophy on holonic systems and the historical transition from hierarchical control layers (PDVSA project context).
-*   [`Manual_Tecnico_Final_MOM.md`](file:///C:/Users/echac/Documents/gemini/sgo/Manual_Tecnico_Final_MOM.md): Technical architecture manual (DB design, event triggers, APIs).
-*   [`Manual_Usuario_MOM.md`](file:///C:/Users/echac/Documents/gemini/sgo/Manual_Usuario_MOM.md): User guide for plant configuration and operation.
-*   [`FenixDescripcionGeneral.md`](file:///C:/Users/echac/Documents/gemini/sgo/FenixDescripcionGeneral.md), [`FILOSOFIA.md`](file:///C:/Users/echac/Documents/gemini/sgo/FILOSOFIA.md), [`FLUJO_DATOS.md`](file:///C:/Users/echac/Documents/gemini/sgo/FLUJO_DATOS.md), [`geminiInicio.md`](file:///C:/Users/echac/Documents/gemini/sgo/geminiInicio.md), [`Glosario_de_Terminos.md`](file:///C:/Users/echac/Documents/gemini/sgo/Glosario_de_Terminos.md): Additional design philosophy, data flow specifications, and terminology glossaries.
+```bash
+# Terminal 1 — Servidor web (API REST + interfaz de operador)
+python app.py
+
+# Terminal 2 — Orquestador continuo (motor de Redes de Petri)
+python main.py
+```
+
+El orquestador lee eventos de la tabla `cola_evento` en la base de datos y los procesa en orden FIFO cada 5 segundos.
+
+> 🚧 **Estado del proyecto: Alpha.** En uso en entorno de desarrollo. No recomendado para producción sin revisión de seguridad (la `secret_key` de Flask debe cambiarse obligatoriamente).
 
 ---
 
-## 🎓 Citation
+## 🚀 Características Clave
 
-If you use Fénix in your academic research, please cite the companion papers:
+- **Autonomía Distribuida (Diseño Holónico):** reemplaza el control jerárquico vertical rígido (ISA-95 clásico) por agentes autónomos y cooperativos que representan Recursos, Productos y Órdenes.
+- **Programación al Costo Óptimo:** minimiza el costo real de producción (energía, mano de obra, depreciación y merma de material) bajo una fecha de entrega fija.
+- **Calibración Automática vía SCADA:** ajusta automáticamente los tiempos de proceso y tarifas energéticas a partir de los registros de ejecución de planta, usando un estimador EWMA de doble escala temporal.
+- **Monitoreo de Condición No Intrusivo:** detecta el desgaste de los recursos mediante un Ratio de Desviación de Energía (EDR) y ajusta la competitividad del recurso automáticamente.
+- **Alta Resiliencia (Tolerancia a Fallos):** el estado se reconstruye automáticamente a partir de los marcados de las Redes de Petri persistidos en base de datos.
+
+---
+
+## 🛠️ Configurar tu planta (para ingenieros de planta, sin programación)
+
+Fénix está diseñado para que un ingeniero de planta lo configure sin necesidad de programar ni de conocer Redes de Petri. La configuración se hace con dos archivos simples:
+
+1. **Datos estáticos (plantillas Excel):**
+   Recursos (máquinas, operarios, tarifas de costo por hora), taxonomías de producto y listas de materiales (BOM), en una hoja de cálculo estándar.
+2. **Lógica del flujo de proceso (scripts YAML):**
+   Un archivo YAML simple que declara los pasos operativos y las sincronizaciones entre estaciones:
+   ```yaml
+   proceso:
+     estaciones:
+       - dispersor_espera
+       - dispersor_mezclando
+       - diluidor_espera
+     acciones:
+       iniciar_mezcla:
+         cuando: [dispersor_espera]
+         mueve_a: [dispersor_mezclando]
+         tipo: "Manual"
+       unir_con_diluidor:
+         cuando: [dispersor_mezclando, diluidor_espera]
+         mueve_a: [diluidor_recibiendo]
+         tipo: "Sincronizado"
+   ```
+
+Para el detalle paso a paso, ve al [Manual de Usuario](Manual_Usuario_MOM.md).
+
+---
+
+## 📂 Estructura del repositorio — ¿por dónde empiezo según mi rol?
+
+| Si eres...                                | Empieza por |
+|--------------------------------------------|-------------|
+| Ingeniero de planta / usuario operativo     | [`Manual_Usuario_MOM.md`](Manual_Usuario_MOM.md) |
+| Desarrollador / integrador técnico          | [`Manual_Tecnico_Final_MOM.md`](Manual_Tecnico_Final_MOM.md) y [`Manual_Tecnico_MOM.md`](Manual_Tecnico_MOM.md) *(ver nota abajo)* |
+| Interesado en los fundamentos y la filosofía del diseño | [`Filosofia_Integracion_Holonica.md`](Filosofia_Integracion_Holonica.md), [`FILOSOFIA.md`](FILOSOFIA.md) |
+| Interesado en las bases científicas         | sección [Publicaciones Científicas](#-publicaciones-científicas) más abajo |
+
+> **Nota:** actualmente hay dos manuales técnicos (`Manual_Tecnico_MOM.md` y `Manual_Tecnico_Final_MOM.md`) con contenido complementario, no uno "borrador" y otro "definitivo". Están pendientes de consolidación — ver ambos por ahora.
+
+Referencia completa de archivos:
+
+- [`fenix/`](fenix/): código fuente del motor de ejecución en Python, esquemas de base de datos e interfaces web.
+  - [`fenix/servicios/`](fenix/servicios/): orquestador, planificador y validador de condición de recursos.
+  - [`fenix/utils/motor_abtppn.py`](fenix/utils/motor_abtppn.py): motor matemático de simulación de Redes de Petri.
+- [`Manual_Usuario_MOM.md`](Manual_Usuario_MOM.md): guía de usuario para configuración y operación de planta.
+- [`Manual_Tecnico_Final_MOM.md`](Manual_Tecnico_Final_MOM.md) / [`Manual_Tecnico_MOM.md`](Manual_Tecnico_MOM.md): manuales de arquitectura técnica (diseño de BD, disparadores de eventos, APIs, metodología de modelado).
+- [`Filosofia_Integracion_Holonica.md`](Filosofia_Integracion_Holonica.md): filosofía introductoria de los sistemas holónicos y la transición histórica desde el control jerárquico (contexto del proyecto PDVSA).
+- [`FenixDescripcionGeneral.md`](FenixDescripcionGeneral.md), [`FILOSOFIA.md`](FILOSOFIA.md), [`FLUJO_DATOS.md`](FLUJO_DATOS.md), [`geminiInicio.md`](geminiInicio.md), [`Glosario_de_Terminos.md`](Glosario_de_Terminos.md): filosofía de diseño adicional, especificación de flujo de datos y glosario de términos.
+
+---
+
+## 📖 Publicaciones Científicas
+
+Fénix se desarrolla como parte de un proyecto de investigación académica en la **Universidad de los Andes (ULA), Mérida, Venezuela**. Sus bases teóricas y resultados empíricos están detallados en dos artículos complementarios:
+
+1. **Parte I: Bases Conceptuales y Optimización**
+   *Título:* "A Holonic PPR Framework and Petri Net Formalism for Cost-Optimal Production Scheduling in SMEs"
+   *Enfoque:* definición formal del modelo matemático AB-TPPN, dependencia de trayectoria de los costos de producción bajo límites de rendimiento de recursos, y el motor de programación Branch-and-Bound.
+2. **Parte II: Integración SCADA y Validación Empírica**
+   *Título:* "SCADA-Driven Model Calibration, Condition Monitoring, and Empirical Cost Verification in Holonic Manufacturing"
+   *Enfoque:* calibración de parámetros en tiempo real usando timestamps SCADA en vivo vía un estimador EWMA, seguimiento no intrusivo de degradación usando el Ratio de Desviación de Energía (EDR), y validación sobre un dataset de 14 meses con 10,089 órdenes de producción.
+
+---
+
+## 🎓 Citación
+
+Si usas Fénix en tu investigación académica, por favor cita los artículos complementarios:
 
 ```bibtex
 @article{ChaconCardillo2026_PartI,
@@ -90,6 +144,10 @@ If you use Fénix in your academic research, please cite the companion papers:
 
 ---
 
-## 📄 License
+## 📄 Licencia
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Este proyecto está licenciado bajo **GNU Affero General Public License v3.0 (AGPL-3.0)** — ver el archivo [`LICENSE`](LICENSE).
+
+En términos simples: puedes usar, modificar y redistribuir Fénix libremente, incluso con fines comerciales (por ejemplo, ofreciendo servicios de soporte o consultoría a una empresa que ya lo usa). La única condición fuerte es que si tomas una versión modificada de Fénix y la ofreces a terceros — incluso solo como servicio accesible por red, sin distribuir el software — debes poner a disposición de esos terceros el código fuente de tus modificaciones. Esto busca que las mejoras hechas sobre el núcleo público del sistema beneficien también a otras PyMEs, y no queden encerradas dentro de un producto comercial cerrado.
+
+> **Nota:** el módulo de planificación (Branch-and-Bound / selección de ruta óptima) y el módulo de aprendizaje no forman parte de este repositorio por el momento y se gestionan por separado.

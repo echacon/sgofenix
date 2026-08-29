@@ -154,7 +154,7 @@ Por favor incluye tests para cambios en `servicios/` o `utils/`.
 
 ## Licencia
 
-GPL-3.0 — ver `LICENSE`.
+AGPL-3.0 — ver `LICENSE` en la raíz del repositorio. Esto significa que si ejecutas una versión modificada de Fénix como servicio (incluso solo accesible por red, sin distribuir el software), debes poner a disposición de tus usuarios el código fuente de esas modificaciones.
 
 ---
 
