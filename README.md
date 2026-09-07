@@ -127,20 +127,15 @@ Si usas Fénix en tu investigación académica, por favor cita los artículos co
 ```bibtex
 @article{ChaconCardillo2026_PartI,
   author  = {Chac{\'o}n, Edgar and Cardillo, Juan},
-  title   = {A Holonic PPR Framework and Petri Net Formalism for Cost-Optimal Production Scheduling in SMEs},
-  journal = {Computers in Industry},
+  title   = {An Activity-Centric Holonic PPR Framework and Petri Net Formalism for Cost-Optimal Scheduling and SCADA-Driven Model Refinement in SMEs},
+  journal = {IJPR},
   year    = {2026},
   note    = {Under review}
 }
 
-@article{ChaconCardillo2026_PartII,
-  author  = {Chac{\'o}n, Edgar and Cardillo, Juan},
-  title   = {SCADA-Driven Model Calibration, Condition Monitoring, and Empirical Cost Verification in Holonic Manufacturing},
-  journal = {Computers in Industry},
-  year    = {2026},
-  note    = {Under review}
-}
 ```
+
+Un libro texto está en preparación. Proximamente estará en el repositorio.
 
 ---
 
@@ -150,4 +145,4 @@ Este proyecto está licenciado bajo **GNU Affero General Public License v3.0 (AG
 
 En términos simples: puedes usar, modificar y redistribuir Fénix libremente, incluso con fines comerciales (por ejemplo, ofreciendo servicios de soporte o consultoría a una empresa que ya lo usa). La única condición fuerte es que si tomas una versión modificada de Fénix y la ofreces a terceros — incluso solo como servicio accesible por red, sin distribuir el software — debes poner a disposición de esos terceros el código fuente de tus modificaciones. Esto busca que las mejoras hechas sobre el núcleo público del sistema beneficien también a otras PyMEs, y no queden encerradas dentro de un producto comercial cerrado.
 
-> **Nota:** el módulo de planificación (Branch-and-Bound / selección de ruta óptima) y el módulo de aprendizaje no forman parte de este repositorio por el momento y se gestionan por separado.
+

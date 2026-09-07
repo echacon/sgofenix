@@ -1,130 +1,308 @@
-# Manual de Usuario: Gestión y Operación del Sistema MOM
+# Manual de Usuario: Gestión, Carga y Operación del Sistema MOM (FÉNIX)
+
+---
 
 ## 0. Filosofía del Sistema (FÉNIX)
 
-FÉNIX es un sistema de seguimiento y gestión de producción (MOM) basado en **Redes de Petri Coloreadas** y una **arquitectura holónica**. Su diseño marca una evolución desde los viejos esquemas de control rígido y centralizado (como los utilizados en la automatización tradicional de grandes refinerías e industrias como PDVSA) hacia una red ágil de unidades autónomas y colaborativas. Su nombre evoca la capacidad de **reiniciar desde cualquier punto** sin pérdida de información, como el ave fénix que renace de sus cenizas. Para conocer los fundamentos filosóficos e históricos que sustentan el sistema, te sugerimos leer la [Filosofía de Integración Holónica](file:///C:/Users/echac/Documents/gemini/Filosofia_Integracion_Holonica.md).
+**FÉNIX** es un sistema de gestión y seguimiento de operaciones de manufactura (**MOM / MES**) diseñado específicamente para Pequeñas y Medianas Empresas (PyMES). Combina la potencia matemática de las **Redes de Petri Temporizadas con Lugares con Costo (AB-TPPN)** con una **arquitectura holónica orientada a actividades**.
 
-### Principio Fundamental
-> **"Cada lote de producción es un token que viaja por el sistema acumulando trazabilidad (cantidad, costo, tiempo). Cada recurso es un holón que sabe qué hacer y con quién coordinarse."**
+A diferencia de los sistemas tradicionales rígidos y centralizados, FÉNIX organiza la fábrica como una red de unidades autónomas y colaborativas (**Holones**), capaces de adaptarse rápidamente y **reiniciar o recuperarse desde cualquier punto sin pérdida de información**.
 
-### Los Tres Pilares del Conocimiento
-1.  **Saber Hacer (Estático):** Sus familias de productos, rutas y máquinas.
-2.  **El Hacer (Dinámico):** Sus órdenes de producción actuales y los eventos en tiempo real.
-3.  **El Aprender (Histórico):** El registro de todo lo que pasó para mejorar el futuro.
+### Principio Fundamental de Operación
+> **"Cada lote de producción es un *token digital* que viaja por la red acumulando trazabilidad física y económica (tiempos reales, cantidades, mermas y costos por actividad ABC). Cada recurso es un *holón inteligente con conocimiento* que encapsula cómo procesar, cuánto rinde y con quién conectarse en la planta."**
 
-## 1. Bienvenido al Sistema MOM para su Fábrica
-Este manual le guiará en el proceso de digitalizar su producción. El objetivo principal es que usted tenga el control total de qué se fabrica, cómo se fabrica y, lo más importante, **cuánto le cuesta realmente producir**.
-
-## 2. Los tres pilares de su fábrica: El Enfoque de "Moldes y Piezas"
-Para que el sistema sea fácil de usar y crezca con usted, primero definimos los "moldes" (Taxonomía) y luego las "piezas" reales (sus Productos y Recursos).
-
-*   **Pilar 1: Familias y Plantillas (La Taxonomía):** Definimos categorías generales. Por ejemplo, la familia "Sillas", el tipo de recurso "Torno Manual" o el proceso "Lijado Estándar". Esto sirve como un molde que ahorra tiempo al crear nuevos elementos.
-*   **Pilar 2: Sus Productos (Qué fabrica):** Utilizando los moldes de las familias, detallamos cada producto real (ej: Silla de Roble Modelo A). Aquí definimos su "receta" técnica (Materiales y Pasos).
-*   **Pilar 3: Sus Recursos (Con qué fabrica):** Mapeamos sus máquinas y operarios reales (ej: Torno #1, Juan Pérez) a los moldes de recursos. Aquí configuramos qué tan rápido trabajan y cómo se conectan entre sí en la planta.
-
-## 3. ¿Cómo y por qué organizamos la información? (Excel vs. YAML)
-
-Para que FÉNIX actúe como el GPS de su fábrica y calcule las mejores rutas de producción, necesita entender su planta de forma ordenada. Para ello, utilizamos un **enfoque híbrido** que hace la configuración simple y sin complicaciones:
-
-1. **Excel es para sus Datos Tabulares (Listas):** Escribir listas de ingredientes (BOM), nombres de productos, costos de energía y tarifas por hora de operarios es muy fácil en Excel. FÉNIX utiliza estas planillas para almacenar toda su información estática.
-2. **YAML es para su Lógica de Secuencia (El Guion):** Explicar en un Excel qué máquina debe esperar a cuál (handshakes) o qué botones debe presionar el operario (triggers) es sumamente enredado. En su lugar, usamos un archivo de texto simple (**YAML**), que actúa como el "guion de una sinfonía" donde se define la coreografía de la planta.
-
-### ¿Qué gano con esta organización?
-* **Planificación Automática:** El sistema busca en su YAML qué pasos se necesitan y en su Excel qué máquinas están libres para armar el plan ideal.
-* **Seguimiento sin pérdidas:** Cada lote se representa como un "token digital" que viaja por el flujo que usted definió en el YAML, permitiéndole ver el estado exacto en su tablet o pantalla.
-* **Costeo Real ABC:** Al asociar las máquinas y tiempos del YAML con los costos por hora del Excel, FÉNIX le da el costo real de cada lote (incluyendo mermas) al terminar la producción.
-
-## 4. Configuración Inicial: El Camino al Éxito
-La configuración se realiza paso a paso utilizando nuestras plantillas de Excel inteligentes. Siga este orden para asegurar que todo encaje perfectamente:
-
-### 4.1. Paso 1: Definiendo los "Moldes" (Taxonomía)
-Antes de cargar 100 productos, defina sus 5 familias principales. Complete la plantilla de **Taxonomía**:
-*   **Familias de Producto:** Clasifique por tipo (Maderas, Metales, Plásticos).
-*   **Tipos de Recurso:** Agrupe sus máquinas (Manuales, CNC, Ensamblado).
-*   **Operaciones Maestras:** Defina cómo se hace un "Corte" o un "Pintado" de forma general.
-
-### 4.2. Paso 2: Creando sus Productos
-Ahora, asigne cada producto a su familia y complete los detalles específicos:
-*   **Receta de Materiales (BOM):** ¿Qué ingredientes usa este producto específico?
-*   **Ruta de Proceso (BOP):** ¿Qué pasos sigue? El sistema le sugerirá los pasos basados en la familia que eligió en el Paso 1.
-
-### 4.3. Paso 3: Configurando su Planta (Recursos y Conectividad)
-Finalmente, detalle sus máquinas y operarios reales:
-*   **Capacidades:** ¿Cuántas horas al día están disponibles? ¿Qué tan rápido son comparados con el estándar?
-*   **Mapa de Movimiento (Conectividad):** Dígale al sistema qué máquina está al lado de cuál. Esto ayuda al sistema a calcular cuánto tiempo se pierde moviendo material de un lado a otro.
-
-## 5. El Ciclo de Operación Diaria: De la Orden a la Entrega
-Una vez configurado el sistema, el trabajo diario es fluido y automático. El sistema se encarga de que nada se detenga.
-
-### Paso 1: El "Guion de la Sinfonía" (Su proceso en YAML y sus Invariantes)
-En FÉNIX, no dibujamos flujos complicados. Escribimos un **Guion** (en formato YAML) que le dice al sistema cómo deben coordinarse sus máquinas e introduce los límites de seguridad y calidad del proceso, llamados **Invariantes**. Las invariantes del proceso están fuertemente vinculadas a las capacidades del recurso que ejecuta cada etapa.
-
-Imagine el proceso del Látex Blanco en un dispersor:
-
-```yaml
-# Guion detallado para Dispersión con Invariantes
-proceso:
-  estaciones:
-    - p1: "Carga de Vehículo"
-    - p2: "Dispersión de Pigmentos"
-    - p3: "Control de Calidad"
-
-  pasos:
-    - id: p2
-      nombre: "Dispersión de Pigmentos"
-      duracion: 30 m
-      velocidad: alta
-      # Invariantes de seguridad operativa para proteger la mezcla:
-      invariantes:
-        - parametro: "Temperatura"
-          valor_maximo: 55.0
-          unidad: "C"
-        - parametro: "Velocidad"
-          valor_minimo: 600.0
-          valor_maximo: 1200.0
-          unidad: "RPM"
+```
+   ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+   │  SABER HACER    │       │    EL HACER     │       │   EL APRENDER   │
+   │   (Estático)    │ ────► │   (Dinámico)    │ ────► │   (Histórico)   │
+   │ Familias, Rutas,│       │ Órdenes activas,│       │ Calibración     │
+   │ Tarifas y YAML  │       │ Tokens y SCADA  │       │ EWMA y EDR      │
+   └─────────────────┘       └─────────────────┘       └─────────────────┘
 ```
 
-Este guion es lo que el sistema usa para configurar las reglas en su panel de control:
-1.  **Seguridad Física (Invariantes de Lazo Cerrado):** Cuando la máquina reporta datos en tiempo real al sistema, FÉNIX valida las mediciones. Si un sensor del dispersor reporta `Temperatura: 57.5°C` (violando el límite máximo de `55°C`), el sistema detiene inmediatamente el flujo de trabajo, bloquea el avance del lote y dispara una alarma para proteger la calidad del lote de pintura.
-2.  **Compuertas de Calidad Automáticas (QA Gates):** En los pasos de control de calidad, el laboratorio ingresa los valores de las pruebas físicas (viscosidad, pH). FÉNIX compara los resultados con los rangos admitidos:
-    *   **Si cumple:** El sistema aprueba el lote de forma automática y habilita la descarga.
-    *   **Si falla:** El sistema dispara una transición de reproceso y devuelve el lote al dispersor, registrando el tiempo y costo de este retrabajo.
+---
 
-### Paso 2: El Reporte en Planta (Interfaz Web)
-Sus operarios no ven el código YAML. Ellos ven una interfaz limpia con botones que corresponden a las **acciones** definidas en el guion.
-*   **Botón de Acción:** Al presionar "Iniciar Mezcla", el sistema mueve el lote digitalmente.
-*   **Lectura de Sensores:** El sistema muestra en pantalla si los parámetros de la máquina (Temperatura, RPM) están en rangos normales o si se ha activado algún bloqueo de seguridad.
-*   **Alertas de Sincronización:** Si un operario intenta mover material pero la siguiente estación no está lista (según el guion), el sistema le avisará: *"Esperando al Diluidor"*.
+## 1. Estructura de la Fábrica: El Enfoque de "Moldes y Piezas"
 
-### Paso 3: Monitoreo en Tiempo Real y Cuellos de Botella
-En su panel de control, usted verá el mapa de su fábrica con luces:
-*   **Verde:** La tarea está fluyendo según lo planeado.
-*   **Amarillo:** La tarea está esperando en una estación (posible cuello de botella).
-*   **Rojo:** La tarea se ha detenido por un problema de máquina o calidad.
+Para que la configuración sea intuitiva y escale con su empresa, la información se organiza en tres pilares:
 
-## 6. Mejora Continua: El sistema que aprende de usted
-Al final de cada semana, el sistema le propondrá **Ajustes de Modelo**. Si una tarea siempre toma más tiempo del que usted escribió en el Excel, el sistema le pedirá permiso para actualizar su "receta" original. Así, sus planes futuros serán cada vez más exactos.
+* **Pilar 1: La Taxonomía (Los Moldes Maestros):** Define categorías genéricas (ej. Familia *"Pinturas Arquitectónicas"*, Tipo de Recurso *"Dispersor de Alta Velocidad"*, Operación Maestra *"Dispersión Estándar"*).
+* **Pilar 2: Sus Productos (La Demanda - Qué se fabrica):** Especifica cada producto concreto (ej. *"Látex Blanco Premium 1000L"*), incluyendo su **Lista de Materiales (BOM)** y su **Ruta de Proceso requerida (BOP)**.
+* **Pilar 3: Sus Recursos (La Oferta - Con qué se fabrica):** Define sus máquinas y puestos de trabajo reales (ej. `DIS-A`, `DIL-1`, `ENV-AUTO`). Aquí se configuran sus capacidades, rendimientos ($\gamma$), tarifas horarias ($\kappa, \omega, \delta$) y la **matriz de conectividad física ($\mathcal{K}$)**.
 
 ---
 
+## 2. Formatos de Configuración: Enfoque Dual (YAML vs. PNML)
+
+FÉNIX le da total libertad para elegir cómo ingresar la lógica de sus procesos:
+
+```
+                  ┌────────────────────────────────────────────────┐
+                  │          ENTRADAS DE MODELADO LIBRES           │
+                  └───────────────────────┬────────────────────────┘
+                                          │
+            ┌─────────────────────────────┴─────────────────────────────┐
+            ▼                                                           ▼
+┌───────────────────────────────────────┐   ┌───────────────────────────────────────┐
+│     VÍA 1: ENFOQUE DECLARATIVO YAML   │   │       VÍA 2: ENFOQUE FORMAL PNML      │
+│      (Para ingeniería de planta)      │   │     (Para modeladores y académicos)   │
+│ • Archivos de texto simples           │   │ • Diseñado en editores como WoPeD     │
+│ • Duraciones nominales e invariantes  │   │ • Validación matemática de propiedades│
+│ • No requiere dibujar redes de Petri  │   │ • Importación directa del XML formal  │
+└───────────────────┬───────────────────┘   └───────────────────┬───────────────────┘
+                    │                                           │
+                    └─────────────────────┬─────────────────────┘
+                                          ▼
+                         ┌─────────────────────────────────┐
+                         │   MODELO INTERNO ÚNICO AB-TPPN   │
+                         │ (Tablas SQL + Objetos Holónicos)│
+                         └─────────────────────────────────┘
+```
+
+* **Vía Ligera (YAML):** Ideal para el personal operativo y técnicos de planta. Solo definen pasos, límites de seguridad (temperatura, RPM) y duraciones en texto claro.
+* **Vía Formal (PNML):** Para modeladores que usan herramientas gráficas como **WoPeD** y desean importar redes de Petri con validación de propiedades estructurales (vivas, acotadas y sin bloqueos).
+
 ---
 
-## 7. Caso de Estudio: El Ciclo Completo en "Pinturas El Fénix"
+## 3. Guía de Carga Paso a Paso (Checklist de Onboarding)
 
-Para visualizar cómo funciona el sistema, veamos el ciclo de una orden de **1.000 kg de Pintura Látex Blanco**.
+Para evitar inconsistencias y dependencias rotas, **la carga de datos en FÉNIX debe seguir un orden secuencial estricto**.
 
-1.  **Configuración:** Usted cargó en su Excel que para hacer esta pintura se necesita pasar por el **Dispersor_22** y luego por el **Diluidor_01**.
-2.  **La Orden:** Usted recibe el pedido y presiona "Aprobar". El sistema crea la orden `ORD-2025-001`.
-3.  **El Inicio:** El operario en el Dispersor ve la tarea en su tablet, carga los pigmentos y presiona **"Iniciar"**. Usted ve una luz verde en su panel.
-4.  **La Coordinación:** Cuando el Dispersor termina, el sistema le pregunta automáticamente al Diluidor si está libre. Si lo está, el operario recibe la señal de **"Trasvasar"**.
-5.  **El Cierre:** Al terminar el envasado, el sistema detecta que se obtuvieron **970 kg** (hubo 3% de pérdida) y que el proceso tomó **15 minutos más** de lo previsto.
-6.  **El Aprendizaje:** El sistema le enviará una notificación: *"He notado que en el Dispersor_22 siempre perdemos 30 kg. ¿Desea que ajuste sus recetas automáticamente para el futuro?"*.
-
-Al aceptar, su fábrica se vuelve más inteligente y sus costos más reales.
+```
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ FASE 1: Base Temporal (Turnos y Calendarios)                            │
+  └────────────────────────────────────┬────────────────────────────────────┘
+                                       ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ FASE 2: Catálogo de Recursos (Máquinas, Tarifas, Mermas y Conectividad) │
+  └────────────────────────────────────┬────────────────────────────────────┘
+                                       ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ FASE 3: Taxonomía y Familias de Productos                               │
+  └────────────────────────────────────┬────────────────────────────────────┘
+                                       ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ FASE 4: Catálogo de Productos y Recetas (BOM y Etapas)                  │
+  └────────────────────────────────────┬────────────────────────────────────┘
+                                       ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ FASE 5: Guiones de Secuencia de Proceso (YAML o PNML)                   │
+  └────────────────────────────────────┬────────────────────────────────────┘
+                                       ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ FASE 6: VALIDACIÓN INTEGRAL PREVIA ("Semáforo Listo para Producir")    │
+  └─────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-### Consejos para el Éxito:
-1.  **Sea preciso con los desperdicios:** Reportar el material que sobra ayuda al sistema a calcular mejor sus próximas compras.
-2.  **Revise sus costos:** Si el precio de la energía o los materiales sube, actualice su plantilla Excel para que el sistema recalcule su rentabilidad.
+### Fase 1: Base Temporal y Calendarios de Turno
+Antes de configurar máquinas, defina los horarios laborales de su planta:
+* **Identificador de Calendario:** ej. `CAL-TURNO-A`, `CAL-24H`.
+* **Horarios Disponibles:** Días hábiles y franjas horarias por turno (ej. Lunes a Viernes 07:00 a 17:00).
+* **Intervalos de Mantenimiento Programado:** Bloqueos fijos de planta.
+
+---
+
+### Fase 2: Catálogo de Recursos (Oferta de Planta)
+Declare cada equipo físico o estación de trabajo:
+
+```yaml
+# Ejemplo: Declaración de un Recurso Holónico
+resource:
+  id: RH-DISP-2000
+  name: "Dispersor de Alta Velocidad 2000L"
+  type: "DISPERSOR"
+  calendar: "CAL-TURNO-A"
+  
+  services:
+    - id: SVC-DISPERSION
+      nominal_duration_min: 145       # Duración nominal base
+      yield: 0.97                     # Rendimiento (3% de merma residual)
+      cost_rates:
+        energy_rate: 0.38             # Costo eléctrico por unidad de tiempo ($/h)
+        labor_rate: 0.22              # Asignación de operario ($/h)
+        depreciation_rate: 0.08       # Tasa de desgaste de equipo ($/h)
+      process_net: "Dis_ChildNet.pnml" # (Opcional si usa red PNML de detalle)
+      
+  # Matriz de Conectividad Física (hacia qué tanques puede descargar):
+  connectivity: [RH-DIL-4000, RH-DIL-6000]
+```
+
+> [!IMPORTANT]
+> **El factor de rendimiento ($\gamma = \text{yield}$)** debe ser un valor entre `0.01` y `1.00`. Por ejemplo, un rendimiento del $97\%$ se ingresa como `0.97` ($3\%$ de merma). Esto permite que el sistema calcule exactamente la materia prima adicional requerida según el camino elegido.
+
+---
+
+### Fase 3: Taxonomía y Familias de Productos
+Agrupe sus productos en familias maestras:
+1. **Familia:** ej. `FAM-ARQ-AGUA` (*Pinturas Arquitectónicas Base Agua*), `FAM-IND-SOLV` (*Pinturas Industriales Base Solvente*).
+2. **Propiedades Maestras:** Tiempos de limpieza entre lotes, factores de merma típicos y restricciones de incompatibilidad de color.
+
+---
+
+### Fase 4: Catálogo de Productos y Recetas (Demanda)
+Defina cada producto vendible y su estructura:
+
+1. **Lista de Materiales (BOM):**
+   * Código de materia prima (ej. `MP-PIGM-TITANIO`, `MP-RESINA-ACRIL`).
+   * Cantidad requerida por unidad de producto terminado (ej. kg/L).
+   * Costo unitario base del material ($u_{\text{mat}}$).
+2. **Ruta de Proceso (BOP - Etapas Requeridas):**
+   * Secuencia ordenada de etapas maestras (ej. $E_1$: `SVC-DISPERSION` $\to$ $E_2$: `SVC-DILUCION` $\to$ $E_3$: `SVC-ENVASADO`).
+
+---
+
+### Fase 5: Guiones de Secuencia de Proceso e Invariantes
+Defina la coreografía interna de cada etapa mediante **YAML** o cargando el archivo **PNML**:
+
+```yaml
+# Ejemplo: Guion YAML de Proceso con Invariantes de Calidad
+proceso:
+  id: PROC-DISPERSION-LATEX
+  etapa_asociada: SVC-DISPERSION
+  
+  pasos:
+    - id: paso_1
+      nombre: "Carga de Agua y Aditivos"
+      duracion_min: 20
+      
+    - id: paso_2
+      nombre: "Adición de Pigmentos y Dispersión Fuerte"
+      duracion_min: 75
+      # Invariantes de seguridad y calidad física:
+      invariantes:
+        - parametro: "Temperatura"
+          limite_maximo: 55.0
+          unidad: "C"
+          accion_violacion: "ALARMA_Y_DETENER_MOTOR"
+        - parametro: "Velocidad"
+          limite_minimo: 600.0
+          limite_maximo: 1200.0
+          unidad: "RPM"
+
+    - id: paso_3
+      nombre: "Control de Calidad (Molienda/Hegman)"
+      duracion_min: 15
+      tipo: "COMPUERTA_CALIDAD" # QA Gate
+```
+
+---
+
+## 4. Fase de Validación Integral: "El Semáforo de Listo para Producir"
+
+Una vez completada la carga de archivos, **nunca lance producción sin ejecutar el módulo de validación**. FÉNIX analiza toda la base de conocimiento y genera un diagnóstico en cuatro niveles:
+
+```
+                    ┌──────────────────────────────────────────────┐
+                    │      MOTOR DE VALIDACIÓN PRE-PRODUCCIÓN      │
+                    └──────────────────────┬───────────────────────┘
+                                           │
+         ┌───────────────────┬─────────────┴───────┬───────────────────┐
+         ▼                   ▼                     ▼                   ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│ 1. Integridad   │ │ 2. Conectividad │ │ 3. Invariantes  │ │ 4. Prueba en    │
+│    Referencial  │ │    Física       │ │    y Redes      │ │    Seco (Dry Run)│
+└────────┬────────┘ └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
+         │                   │                     │                   │
+         └───────────────────┼─────────────────────┴───────────────────┘
+                             ▼
+              ┌─────────────────────────────┐
+              │   SEMÁFORO DE DIAGNÓSTICO   │
+              │  [VERDE / AMARILLO / ROJO]  │
+              └─────────────────────────────┘
+```
+
+### 4.1. Verificación 1: Integridad Referencial
+* **Chequeo de Insumos:** Que todo ingrediente en el BOM exista en la tabla maestra de materiales con costo unitario $> 0$.
+* **Chequeo de Servicios:** Que cada servicio solicitado por los productos ($s_i$) sea ofrecido por al menos un recurso activo en planta.
+* **Chequeo de Calendarios:** Que ninguna máquina tenga un calendario inexistente o vacío.
+
+### 4.2. Verificación 2: Conectividad Física del Grafo de Planta ($\mathcal{K}$)
+* FÉNIX construye el grafo dirigido de la planta.
+* Verifica que para cada producto exista **al menos una ruta física continua sin cortes**.
+* *Ejemplo de detección de error:* Si un producto requiere `Dispersión` $\to$ `Dilución` $\to$ `Envasado`, pero `DIS-A` solo se conecta a `DIL-1` y `DIL-1` no tiene tubería hacia `ENV-AUTO`, el sistema emite un error de ruta rota.
+
+### 4.3. Verificación 3: Validación de Invariantes y Redes de Petri
+* **En YAML:** Comprueba que no existan tiempos negativos, que los rangos mínimo/máximo de invariantes sean coherentes ($\text{mínimo} < \text{máximo}$) y que los identificadores de pasos sean únicos.
+* **En PNML (WoPeD):** Verifica que la red sea conexa, tenga un único lugar inicial ($p_{\text{in}}$) y final ($p_{\text{out}}$), y que no existan bloqueos estructurales (*deadlocks*).
+
+### 4.4. Verificación 4: La "Prueba en Seco" (Dry-Run de Orden Cero)
+* El sistema crea una orden de prueba virtual de 1 lote sin afectar los registros reales.
+* Simula el viaje del token por la red, evalúa la acumulación de costos por actividad ($c_{\text{acc}}$) y verifica que el cálculo de merma acumulada retropropague correctamente.
+* Si el token llega al lugar de salida con éxito, la prueba pasa.
+
+### 4.5. Interpretación del Semáforo
+
+| Color | Estado | Significado para el Usuario | Acción Requerida |
+| :---: | :---: | :--- | :--- |
+| 🟢 | **LISTO PARA PRODUCIR** | 100% de integridad, conectividad y lógica verificada. | Puede recibir y programar órdenes reales de clientes. |
+| 🟡 | **ADVERTENCIA** | Hay datos no críticos faltantes (ej. un recurso secundario no tiene tarifa de depreciación asignada). | Se puede operar, pero se recomienda completar los datos para máxima exactitud de costos. |
+| 🔴 | **BLOQUEO CRÍTICO** | Errores de ruta rota, servicio huérfano o red de Petri no conexa. | El sistema bloquea el lanzamiento de órdenes hasta corregir la inconsistencia. |
+
+---
+
+## 5. Guía de Solución de Problemas Frecuentes (Troubleshooting)
+
+| Mensaje de Error / Alerta en Fénix | Causa Raíz Probable | Solución Paso a Paso |
+| :--- | :--- | :--- |
+| **`"Error: Servicio SVC-XXX huérfano"`** | Un producto requiere un servicio que ninguna máquina tiene registrado en su lista de servicios. | Abra el archivo de Recursos (`yaml` o Excel), ubique la máquina correspondiente y agregue `SVC-XXX` en su bloque `services`. |
+| **`"Error: Ruta física rota para Producto P"`** | Las máquinas que hacen las etapas consecutivas $E_i$ y $E_{i+1}$ no están conectadas en la matriz $\mathcal{K}$. | Verifique la línea `connectivity:` del recurso de la etapa $E_i$ y asegúrese de que incluya el ID del recurso de la etapa siguiente. |
+| **`"Alerta: Yield fuera de rango [0.01, 1.00]"`** | Se ingresó un porcentaje entero (ej. `97`) en lugar de la fracción decimal (`0.97`). | Modifique el valor de `yield` para que sea decimal entre 0 y 1 (ej. 0.95 para 5% de merma). |
+| **`"Error: PNML Deadlock detectado en Net N"`** | La red de Petri diseñada en WoPeD tiene una bifurcación sin unión o una transición que consume tokens de un recurso que nunca se liberan. | Abra la red en WoPeD, use el análisis de *Soundness* (propiedades de Workflow-Net), corrija los lazos y re-exporte el archivo `.pnml`. |
+| **`"Alerta: EDR > 1.15 en Recurso R"`** | El sensor SCADA detecta sobreconsumo eléctrico continuado en la máquina (posible fricción o desgaste de rodamiento). | Programe una inspección mecánica preventiva. El sistema automáticamente penalizará el costo de ese equipo en la optimización hasta que se normalice. |
+
+---
+
+## 6. El Ciclo de Operación Diaria: De la Orden a la Entrega
+
+```
+  1. RECEPCIÓN DE PEDIDO
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ El planificador ingresa la orden: Producto, Cantidad (kg/L) y Deadline d │
+  └────────────────────────────────────┬────────────────────────────────────┘
+                                       │
+  2. PROGRAMACIÓN ÓPTIMA (Horizonte Deslizante)
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ El motor B&B busca la terna de máquinas con menor costo total ABC y     │
+  │ reserva los intervalos en las agendas Ψ de los recursos.                │
+  └────────────────────────────────────┬────────────────────────────────────┘
+                                       │
+  3. EJECUCIÓN EN PLANTA Y CONTROL EN TIEMPO REAL
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ Operarios ejecutan pasos en tablet. SCADA valida invariantes (T°, RPM). │
+  │ Transiciones de compuerta verifican calidad antes del trasvase.         │
+  └────────────────────────────────────┬────────────────────────────────────┘
+                                       │
+  4. CIERRE Y COSTEO REAL
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ El sistema registra los kWh reales y tiempo exacto. Calcula costo final │
+  │ y alimenta el lazo de aprendizaje EWMA para futuras órdenes.           │
+  └─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 7. Caso Práctico Guiado: Orden de 1.000 kg de Látex Blanco
+
+1. **Configuración Validada:** En planta disponemos de los dispersores `DIS-A` ($\gamma=0.97$), `DIS-B` ($\gamma=0.94$), los diluidores `DIL-1`, `DIL-2` y la envasadora `ENV-AUTO`.
+2. **Recepción de la Orden:** Se recibe pedido `ORD-2026-101` de $1.000\text{ kg}$ con fecha límite $d = 8\text{ horas}$ ($480\text{ min}$).
+3. **Cálculo de Demanda Real:**
+   * Al elegir `DIS-A` ($\gamma=0.97$) y `DIL-1` ($\gamma=0.99$), el sistema calcula que se deben cargar exactamente:
+     $$\text{Materia Prima Requerida} = \frac{1000}{0.97 \times 0.99} = 1.041,3\text{ kg}$$
+4. **Optimización Económica:** Aunque `DIS-B` tiene un motor eléctrico más pequeño, su menor rendimiento ($\gamma=0.94$) obligaría a cargar $1.074,5\text{ kg}$ ($33,2\text{ kg}$ extra de materias primas caras). El optimizador selecciona automáticamente la ruta `DIS-A` $\to$ `DIL-1` $\to$ `ENV-AUTO` como la de **menor costo global**.
+5. **Seguimiento en Pantalla:** Durante la dispersión, la temperatura se mantiene en $48^\circ\text{C}$ ($< 55^\circ\text{C}$). Al completarse, el laboratorio registra viscosidad OK y el lote avanza al diluidor.
+6. **Cierre de Orden:** Al finalizar el envasado, el sistema emite el reporte de costo real desglosado:
+   * Materias Primas: $\$1.250$
+   * Energía Eléctrica: $\$45,60$
+   * Mano de Obra Directa: $\$38,20$
+   * Depreciación de Máquinas: $\$12,40$
+   * **Costo Real Total:** $\mathbf{\$1.346,20}$ ($\$1,346/\text{kg}$).
+
+---
+
+## 8. Recomendaciones para el Éxito en Planta
+
+1. **Mantenga al día la conectividad física:** Si traslada una manguera o habilita una tubería nueva entre dos tanques, actualice la lista `connectivity` del recurso.
+2. **Reporte paradas reales:** Cuando una máquina entre en mantenimiento, bloquéela en su calendario $\Omega$ para que el programador no asigne lotes a ese equipo.
+3. **Valide siempre antes de arrancar:** Si agrega un nuevo producto al catálogo, pulse **"Validar Configuración"** para asegurarse de que el semáforo esté en **Verde**.

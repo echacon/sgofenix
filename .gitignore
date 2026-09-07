@@ -57,10 +57,5 @@ htmlcov/
 tmp/
 
 
-# Módulo de planificación (Branch-and-Bound) — no publicado, gestionado por separado
-fenix/servicios/planificador.py
-fenix/utils/global_reachability.py
-fenix/utils/reachability.py
-
 # Script de prueba exclusivo del planificador reservado
 fenix/scripts/pruebas/verificar_planificacion_sesion3.py
