@@ -13,11 +13,62 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TokenColoreado:
-    """Token coloreado que transporta información de la orden"""
+    """
+    Token coloreado que transporta el estado holónico y contable de la orden (WIP).
+    Formalización: <lot_id, m, c_acc, raw_add, t_arr, V_target>
+    """
     orden_id: str
-    material: float
-    coste: float
-    timestamp: datetime
+    material: float                          # Masa o volumen actual (m)
+    costo: float = 0.0                       # Costo acumulado del lote c_acc
+    timestamp: Optional[datetime] = None     # Marca de tiempo de llegada / último evento
+    v_target: Optional[float] = None         # Cota máxima de viabilidad económica (V_target)
+    costo_unitario: float = 0.0              # Costo unitario con absorción de mermas (u = c_acc / m)
+    coste: float = 0.0                       # Alias retrocompatible
+
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now()
+        # Sincronizar alias coste y costo
+        if self.costo == 0.0 and self.coste != 0.0:
+            self.costo = self.coste
+        else:
+            self.coste = self.costo
+        self.actualizar_costo_unitario()
+
+    def actualizar_costo_unitario(self) -> float:
+        """Calcula u = c_acc / m con absorción de mermas."""
+        if self.material and self.material > 0:
+            self.costo_unitario = self.costo / self.material
+        else:
+            self.costo_unitario = 0.0
+        return self.costo_unitario
+
+    def acumular_costo(self, delta_costo: float):
+        """Acumula un costo de procesamiento, energía, mano de obra o trasvase."""
+        self.costo += delta_costo
+        self.coste = self.costo
+        self.actualizar_costo_unitario()
+
+    def transformar_etapa(self, masa_adicionada: float = 0.0, costo_materia_prima: float = 0.0,
+                          costo_operativo: float = 0.0, rendimiento_gamma: float = 1.0):
+        """
+        Aplica la transformación completa de una etapa del proceso:
+        1. Balance de masa con adición y rendimiento: m_exit = (m_enter + delta_m) * gamma
+        2. Acumulación de costo: c_acc_exit = c_acc_enter + c_raw + c_proc
+        3. Absorción de merma en el costo unitario: u_exit = c_acc_exit / m_exit
+        """
+        masa_total_in = self.material + max(0.0, masa_adicionada)
+        gamma = max(0.0001, min(1.0, rendimiento_gamma))
+        self.material = masa_total_in * gamma
+        
+        delta_costo = max(0.0, costo_materia_prima) + max(0.0, costo_operativo)
+        self.acumular_costo(delta_costo)
+
+    def es_economicamente_viable(self) -> bool:
+        """Verifica la cota de viabilidad económica: c_acc <= V_target."""
+        if self.v_target is not None and self.v_target > 0:
+            return self.costo <= self.v_target
+        return True
 
 
 @dataclass
@@ -35,8 +86,10 @@ class InstanciaRedMem:
         self.marcado = marcado.copy() if marcado else {}
         self.token_o = token.orden_id
         self.token_m = token.material
-        self.token_c = token.coste
+        self.token_c = token.costo
         self.token_t = token.timestamp
+        self.token_v_target = token.v_target
+        self.token_u = token.costo_unitario
         self.pnml_path = pnml_path
         self.red = None
         self.bd_id = None
@@ -224,8 +277,10 @@ class MotorABTPPN:
         token_actual = TokenColoreado(
             orden_id=instancia.token_o,
             material=instancia.token_m,
-            coste=instancia.token_c,
-            timestamp=instancia.token_t
+            costo=instancia.token_c,
+            timestamp=instancia.token_t,
+            v_target=getattr(instancia, 'token_v_target', None),
+            costo_unitario=getattr(instancia, 'token_u', 0.0)
         )
         
         # Consumir tokens de entrada
@@ -277,8 +332,10 @@ class MotorABTPPN:
         # Actualizar token de la instancia con el recibido
         instancia.token_o = token.orden_id
         instancia.token_m = token.material
-        instancia.token_c = token.coste
+        instancia.token_c = token.costo
         instancia.token_t = token.timestamp
+        instancia.token_v_target = token.v_target
+        instancia.token_u = token.costo_unitario
         
         # Producir tokens en salida
         salidas = self._obtener_salidas_y_pesos(instancia, trans_id)
@@ -335,8 +392,10 @@ class MotorABTPPN:
         return TokenColoreado(
             orden_id=instancia.token_o,
             material=instancia.token_m,
-            coste=instancia.token_c,
-            timestamp=instancia.token_t
+            costo=instancia.token_c,
+            timestamp=instancia.token_t,
+            v_target=getattr(instancia, 'token_v_target', None),
+            costo_unitario=getattr(instancia, 'token_u', 0.0)
         )
     
     def eliminar_instancia(self, instancia_id: int):

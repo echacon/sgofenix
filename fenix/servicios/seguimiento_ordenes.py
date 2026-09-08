@@ -31,41 +31,52 @@ class ServicioSeguimiento:
     # CREACIÓN DE ORDEN
     # ============================================================
     
-    def crear_orden(self, producto_id: int, cantidad: float, prioridad: int = 1, cliente: str = None) -> OrdenProduccion:
+    def crear_orden(self, producto_id: int, cantidad: float, prioridad: int = 1,
+                    cliente: str = None, v_target: float = None) -> OrdenProduccion:
         """
-        Crea una orden seleccionando la ruta activa mediante SelectorRuta
-        (filtrado por rango de lote, prioridad y conectividad, sin optimización
-        de costo) y toma la asignación de recursos ya configurada de forma
-        estática para esa ruta (tabla AsignacionRecurso).
-
-        NOTA: esta selección no minimiza costo entre rutas alternativas. El
-        módulo de planificación por costo óptimo (Branch-and-Bound) no forma
-        parte de este repositorio.
+        Crea una orden seleccionando la ruta y asignación de recursos óptima
+        mediante PlanificadorProduccion (Branch-and-Bound / Composición con costo mínimo
+        y cota económica V_target). Si no hay solución viable por costo, utiliza SelectorRuta.
         """
         producto = self.session.query(Producto).get(producto_id)
         if not producto:
             raise ValueError(f"Producto {producto_id} no encontrado")
 
-        orden_temporal = OrdenProduccion(
+        from servicios.planificador import PlanificadorProduccion
+        planificador = PlanificadorProduccion(self.session)
+        plan_optimo = planificador.seleccionar_recursos_para_orden(
             producto_id=producto_id,
             cantidad=cantidad,
             prioridad=prioridad,
+            v_target=v_target
         )
-        orden_temporal.producto = producto
 
-        ruta = SelectorRuta(self.session).seleccionar_ruta(orden_temporal)
-        if not ruta:
-            raise ValueError("No se pudo seleccionar una ruta para la orden")
+        if plan_optimo:
+            ruta_id = plan_optimo["holon_ruta_id"]
+            ruta = self.session.query(HolonRuta).get(ruta_id)
+            asignacion = plan_optimo["asignacion"]
+        else:
+            orden_temporal = OrdenProduccion(
+                producto_id=producto_id,
+                cantidad=cantidad,
+                prioridad=prioridad,
+            )
+            orden_temporal.producto = producto
 
-        asignacion = {}
-        for asig in ruta.asignaciones:
-            etapa_nombre = asig.etapa.nombre
-            asignacion[etapa_nombre] = {
-                "recurso_id": asig.recurso_id,
-                "recurso_nombre": asig.recurso.nombre if asig.recurso else str(asig.recurso_id),
-            }
+            ruta = SelectorRuta(self.session).seleccionar_ruta(orden_temporal)
+            if not ruta:
+                raise ValueError("No se pudo seleccionar una ruta viable para la orden (verifique condiciones y cota de costo)")
+
+            asignacion = {}
+            for asig in ruta.asignaciones:
+                etapa_nombre = asig.etapa.nombre
+                asignacion[etapa_nombre] = {
+                    "recurso_id": asig.recurso_id,
+                    "recurso_nombre": asig.recurso.nombre if asig.recurso else str(asig.recurso_id),
+                }
+
         if not asignacion:
-            raise ValueError(f"La ruta '{ruta.nombre}' no tiene recursos asignados (AsignacionRecurso)")
+            raise ValueError(f"La ruta '{ruta.nombre}' no tiene recursos asignados")
 
         orden = OrdenProduccion(
             producto_id=producto_id,

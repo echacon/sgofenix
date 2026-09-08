@@ -228,12 +228,24 @@ class Orquestador:
             
             # Determinar recursos ocupados por esta red (coincidencia por nombre de etapa o por mapeo explícito)
             # Asumimos que el nombre de la red coincide con alguna etapa (ej: "dispersion" → etapa "Dispersión")
-            recursos_ocupados = {}
-            for etapa_nombre,  recurso_info in asignacion_orden.items():
-                if etapa_nombre.lower() in red_bd.nombre.lower(): 
-                    recursos_ocupados['recursos'] = [recurso_info['recurso_nombre']]
-                    break
-            # Si no se encuentra, dejar vacío (pero se podría inferir de otro modo)
+            recursos_ocupados = {'recursos': []}
+            for etapa_cod, recurso_info in (asignacion_orden or {}).items():
+                # Coincidencia por código de etapa (DIS, DIL, etc.) o nombre
+                etapa_term = etapa_cod.lower()
+                if (etapa_term in red_bd.nombre.lower() or 
+                    ("disp" in etapa_term and "dispersion" in red_bd.nombre.lower()) or
+                    ("dil" in etapa_term and "dilucion" in red_bd.nombre.lower())):
+                    recurso_n = recurso_info.get('recurso_nombre')
+                    recurso_i = recurso_info.get('recurso_id')
+                    if recurso_n:
+                        recursos_ocupados['recursos'].append(str(recurso_n))
+                    if recurso_i:
+                        recursos_ocupados['recursos'].append(str(recurso_i))
+                    # Buscar código del recurso en BD
+                    from modelos.Recursos import Recurso
+                    rec_obj = self.session.query(Recurso).get(recurso_i) if recurso_i else None
+                    if rec_obj and rec_obj.codigo:
+                        recursos_ocupados['recursos'].append(rec_obj.codigo)
             
             inst_mem_id = self.motor.crear_instancia(
                 red_nombre=red_bd.nombre,
@@ -251,10 +263,10 @@ class Orquestador:
                 marcado=marcado_inicial,
                 token_o=token.orden_id,
                 token_m=token.material,
-                token_c=token.coste,
+                token_c=token.costo,
                 token_t=token.timestamp,
                 activa=True,
-                recursos_ocupados=recursos_ocupados   # ← NUEVO
+                recursos_ocupados=recursos_ocupados
             )
             self.session.add(inst_bd)
             self.session.flush()
@@ -271,25 +283,31 @@ class Orquestador:
                 self.procesar_automaticas_instancia(inst_mem_id)
 
     def _resolver_red_por_recurso(self, orden_id: int, recurso_nombre: str) -> Optional[str]:
-        """Dado un recurso físico, determina a qué red pertenece dentro de la orden activa."""
-        # Buscar instancia activa que tenga ese recurso en recursos_ocupados
-        instancia = self.session.query(InstanciaRed).filter(
-            InstanciaRed.orden_id == orden_id,
-            InstanciaRed.activa == True,
-            InstanciaRed.completada == False
-        ).first()  # Podría haber varias; asumimos que un recurso solo está en una red a la vez
+        """Dado un recurso físico (nombre, código o ID), determina a qué red pertenece dentro de la orden activa."""
+        recurso_str = str(recurso_nombre).strip().lower()
         
-        # Mejor: recorrer todas y verificar si el recurso está en recursos_ocupados
         for inst in self.session.query(InstanciaRed).filter(
             InstanciaRed.orden_id == orden_id,
             InstanciaRed.activa == True,
             InstanciaRed.completada == False
         ):
             ocupados = inst.recursos_ocupados or {}
-            # Asumiendo que recursos_ocupados es un dict con una clave 'recursos' o una lista
             recursos_lista = ocupados.get('recursos', []) if isinstance(ocupados, dict) else []
-            if recurso_nombre in recursos_lista:
-                return inst.tipo
+            for r in recursos_lista:
+                if str(r).strip().lower() == recurso_str or recurso_str in str(r).strip().lower():
+                    return inst.tipo
+        
+        # Fallback heurístico si no está explícito en recursos_ocupados
+        if any(k in recurso_str for k in ["disp", "mol", "tanq_dil", "dil"]):
+            for inst in self.session.query(InstanciaRed).filter(
+                InstanciaRed.orden_id == orden_id,
+                InstanciaRed.activa == True,
+                InstanciaRed.completada == False
+            ):
+                if "disp" in recurso_str and "dispersion" in inst.tipo.lower():
+                    return inst.tipo
+                elif "dil" in recurso_str and "dilucion" in inst.tipo.lower():
+                    return inst.tipo
         
         return None
     
@@ -1188,32 +1206,50 @@ class Orquestador:
             instancia_bd.token_c = instancia_mem.token_c
             instancia_bd.token_t = instancia_mem.token_t
 
-    def _obtener_costo_hora_recurso(self, orden_id: int, red_nombre: str, recurso_id: str) -> float:
-        """Busca el costo por hora del recurso asignado a esta etapa."""
-        # Buscar el holon_ruta de la orden
+    def _obtener_costo_hora_recurso(self, orden_id: int, red_nombre: str, recurso_nombre_o_id: str) -> float:
+        """
+        Calcula la tasa horaria combinada ABC para el recurso:
+        tasa = (kappa * u + omega + delta + mu) * EDR
+        """
         orden = self.session.query(OrdenProduccion).get(orden_id)
         if not orden or not orden.holon_ruta_id:
             return 0.0
         
-        # Buscar la asignación de recurso para esta red y recurso
-        # Primero obtener la red para saber su tipo (red_nombre)
-        red = self.session.query(RedPetri).filter_by(nombre=red_nombre).first()
-        if not red:
-            return 0.0
-        
-        # Buscar el PatronDeRuta asociado a la red
-        if not red.patron_ruta_id:
-            return 0.0
-        
-        # Buscar la etapa del patrón que corresponde a esta red? No es directo.
-        # Alternativa: buscar en asignacion_recurso donde el recurso_id coincida y el holon_ruta_id sea el de la orden
-        from modelos.Producto import AsignacionRecurso
-        asignacion = self.session.query(AsignacionRecurso).filter(
-            AsignacionRecurso.holon_ruta_id == orden.holon_ruta_id,
-            AsignacionRecurso.recurso_id == recurso_id
+        from modelos.Recursos import Recurso
+        recurso = self.session.query(Recurso).filter(
+            (Recurso.id == recurso_nombre_o_id) |
+            (Recurso.codigo == recurso_nombre_o_id) |
+            (Recurso.nombre == recurso_nombre_o_id)
         ).first()
         
-        if asignacion:
-            return asignacion.costo_por_hora_real
-        return 0.0
+        if not recurso:
+            return 0.0
+            
+        asignacion = self.session.query(AsignacionRecurso).filter(
+            AsignacionRecurso.holon_ruta_id == orden.holon_ruta_id,
+            AsignacionRecurso.recurso_id == recurso.id
+        ).first()
+        
+        costo_mano_obra = asignacion.costo_por_hora_real if asignacion else 0.0
+        
+        # Costos de máquina si es equipo
+        recurso_eq = recurso.equipo
+        costo_energia = 0.0
+        costo_depreciacion = 0.0
+        edr = 1.0
+        
+        if recurso_eq:
+            consumo_kw = recurso_eq.consumo_energia_kw or 0.0
+            costo_kwh = recurso_eq.costo_energia_por_kwh or 0.0
+            costo_depreciacion = recurso_eq.costo_depreciacion_hora or 0.0
+            if getattr(recurso_eq, 'medidor_energia', False):
+                edr = getattr(recurso_eq, 'edr_actual', 1.0) or 1.0
+            costo_energia = (consumo_kw * costo_kwh) * edr
+            costo_depreciacion *= edr
+            
+        # Overhead de gestión estimado (mu)
+        costo_overhead = 12.0
+        
+        tasa_total = costo_mano_obra + costo_energia + costo_depreciacion + costo_overhead
+        return tasa_total
     

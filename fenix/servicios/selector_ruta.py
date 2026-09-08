@@ -16,10 +16,11 @@ class SelectorRuta:
     def seleccionar_ruta(self, orden: OrdenProduccion) -> Optional[HolonRuta]:
         """
         Selecciona la mejor ruta para una orden según:
-        - Cantidad del lote
-        - Prioridad
+        - Cantidad del lote (lote_minimo_kg, lote_maximo_kg)
+        - Prioridad mínima
         - Disponibilidad de inventario (pasta base)
-        - Preferencias configuradas
+        - Preferencias configuradas en condiciones JSON
+        - Conectividad física en el grafo de planta
         """
         
         producto = orden.producto
@@ -36,18 +37,22 @@ class SelectorRuta:
         rutas_validas = []
         
         for ruta in rutas:
+            condiciones = ruta.condiciones or {}
+            
             # Verificar rango de lote
-            if cantidad < ruta.lote_minimo_kg:
-                continue
-            if cantidad > ruta.lote_maximo_kg:
+            lote_min = condiciones.get('lote_minimo_kg', 0)
+            lote_max = condiciones.get('lote_maximo_kg', float('inf'))
+            if cantidad < lote_min or cantidad > lote_max:
                 continue
             
             # Verificar prioridad mínima
-            if prioridad < ruta.prioridad_minima:
+            prioridad_min = condiciones.get('prioridad_minima', 1)
+            if prioridad < prioridad_min:
                 continue
             
             # Verificar si requiere pasta base disponible
-            if ruta.requiere_pasta_base:
+            requiere_pasta_base = condiciones.get('requiere_pasta_base', False)
+            if requiere_pasta_base:
                 if not self._verificar_disponibilidad_pasta_base(producto, cantidad):
                     continue
             
@@ -57,7 +62,7 @@ class SelectorRuta:
             return None
         
         # Ordenar por preferencia (menor número = mayor prioridad)
-        rutas_validas.sort(key=lambda r: r.orden_preferencia)
+        rutas_validas.sort(key=lambda r: (r.condiciones or {}).get('orden_preferencia', 999))
         
         # Validar conectividad física de cada ruta candidata
         rutas_conectadas = []
