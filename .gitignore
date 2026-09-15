@@ -56,6 +56,3 @@ htmlcov/
 *.temp
 tmp/
 
-
-# Script de prueba exclusivo del planificador reservado
-fenix/scripts/pruebas/verificar_planificacion_sesion3.py
