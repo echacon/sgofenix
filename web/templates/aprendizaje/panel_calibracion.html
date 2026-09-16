@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Lazo de Aprendizaje y Calibración - FÉNIX{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="fw-bold mb-1"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Lazo de Aprendizaje y Auto-Calibración</h2>
+                <p class="text-muted mb-0">Suavizado exponencial EWMA ($\alpha=0.20$) para eficiencias operacionales ($\kappa$) y factor de degradación energética ($EDR$).</p>
+            </div>
+            <div>
+                <button class="btn btn-outline-primary" onclick="cargarDatosAprendizaje()">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refrescar Calibración
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Recursos Calibrados -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title fw-bold mb-0"><i class="bi bi-cpu me-2 text-primary"></i>Estado de Auto-Calibración de Recursos de Planta</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase">
+                            <tr>
+                                <th>Código</th>
+                                <th>Recurso Físico</th>
+                                <th>Tipo</th>
+                                <th class="text-center">Eficiencia Real EWMA ($\hat{\kappa}$)</th>
+                                <th class="text-center">Degradación Energética ($EDR$)</th>
+                                <th class="text-end">Potencia (kW)</th>
+                                <th class="text-center">Telemetría Smart</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaRecursosBody">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">Cargando métricas de recursos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial de Lotes y Exclusión de Tracking Error -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title fw-bold mb-0"><i class="bi bi-journal-text me-2 text-primary"></i>Auditoría de Lotes y Calibración por Lote</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase">
+                            <tr>
+                                <th>Orden</th>
+                                <th>Producto</th>
+                                <th class="text-end">Cantidad (kg)</th>
+                                <th>Estado</th>
+                                <th class="text-center">Eventos Petri</th>
+                                <th class="text-center">Tratamiento Estadístico</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaHistorialBody">
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">Cargando historial de lotes...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function cargarDatosAprendizaje() {
+    try {
+        // 1. Cargar recursos
+        const respRec = await fetch('/aprendizaje/api/recursos_calibrados');
+        const dataRec = await respRec.json();
+        
+        if (dataRec.success) {
+            renderizarRecursos(dataRec.recursos);
+        }
+        
+        // 2. Cargar historial
+        const respHist = await fetch('/aprendizaje/api/historial_calibraciones');
+        const dataHist = await respHist.json();
+        
+        if (dataHist.success) {
+            renderizarHistorial(dataHist.historial);
+        }
+    } catch (e) {
+        console.error('Error cargando datos de aprendizaje:', e);
+    }
+}
+
+function renderizarRecursos(recursos) {
+    const tbody = document.getElementById('tablaRecursosBody');
+    tbody.innerHTML = '';
+    
+    if (recursos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No hay recursos registrados.</td></tr>';
+        return;
+    }
+    
+    recursos.forEach(r => {
+        const tr = document.createElement('tr');
+        
+        // Badge de eficiencia
+        let badgeEf = 'bg-success';
+        if (r.eficiencia_real < 0.85) badgeEf = 'bg-danger';
+        else if (r.eficiencia_real < 0.95) badgeEf = 'bg-warning text-dark';
+        
+        // Badge EDR
+        let badgeEdr = 'bg-success';
+        if (r.edr_actual > 1.2) badgeEdr = 'bg-danger';
+        else if (r.edr_actual > 1.05) badgeEdr = 'bg-warning text-dark';
+        
+        tr.innerHTML = `
+            <td><code>${r.codigo}</code></td>
+            <td class="fw-bold">${r.nombre}</td>
+            <td><span class="badge bg-light text-secondary border text-uppercase">${r.tipo}</span></td>
+            <td class="text-center"><span class="badge ${badgeEf} px-3 py-2 fs-6">${(r.eficiencia_real * 100).toFixed(1)}%</span></td>
+            <td class="text-center"><span class="badge ${badgeEdr} px-3 py-2 fs-6">${r.edr_actual.toFixed(3)}x</span></td>
+            <td class="text-end">${r.consumo_kw ? r.consumo_kw.toFixed(1) + ' kW' : 'N/A'}</td>
+            <td class="text-center">${r.tiene_telemetria_energia ? '<i class="bi bi-lightning-charge-fill text-warning fs-5"></i>' : '<span class="text-muted small">Estático</span>'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function renderizarHistorial(historial) {
+    const tbody = document.getElementById('tablaHistorialBody');
+    tbody.innerHTML = '';
+    
+    if (historial.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No hay lotes ejecutados en el historial.</td></tr>';
+        return;
+    }
+    
+    historial.forEach(h => {
+        const tr = document.createElement('tr');
+        
+        let badgeTratamiento = 'bg-success';
+        if (h.tipo_calibracion.includes('EXCLUIDO')) {
+            badgeTratamiento = 'bg-secondary';
+        } else if (h.tipo_calibracion.includes('EN CURSO')) {
+            badgeTratamiento = 'bg-info text-dark';
+        }
+        
+        tr.innerHTML = `
+            <td class="fw-bold"><code>${h.numero_orden}</code></td>
+            <td>${h.producto_nombre}</td>
+            <td class="text-end">${h.cantidad.toFixed(0)}</td>
+            <td><span class="badge bg-light text-dark border text-uppercase">${h.estado}</span></td>
+            <td class="text-center">${h.eventos_registrados} eventos</td>
+            <td class="text-center"><span class="badge ${badgeTratamiento} px-2 py-1 small">${h.tipo_calibracion}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', cargarDatosAprendizaje);
+</script>
+{% endblock %}

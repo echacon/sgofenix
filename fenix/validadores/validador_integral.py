@@ -120,6 +120,93 @@ class ValidadorIntegralPlanta:
 
         return True
 
+    def cargar_desde_bd(self, session) -> bool:
+        """Carga y consolida el estado maestro de la planta directamente desde la BD."""
+        try:
+            from modelos.Recursos import Recurso, ConexionFisica
+            from modelos.Producto import Producto, HolonRuta, Formula, InsumoFormula
+            from modelos.Taxonomia import EtapaRuta, TipoDeOperacion
+
+            # 1. Cargar Recursos
+            recursos_bd = session.query(Recurso).all()
+            for r in recursos_bd:
+                codigo = r.codigo or f"REC-{r.id}"
+                servicios = []
+                for so in getattr(r, 'servicios_ofrecidos', []):
+                    if hasattr(so, 'servicio_tecnico') and so.servicio_tecnico:
+                        servicios.append(so.servicio_tecnico.codigo or so.servicio_tecnico.nombre)
+                    elif hasattr(so, 'servicio') and so.servicio:
+                        servicios.append(so.servicio.codigo or so.servicio.nombre)
+                
+                # Heurística si no hay servicios técnicos explícitos
+                if not servicios:
+                    r_nom = (r.nombre or '').lower()
+                    if 'disp' in r_nom:
+                        servicios.append('DIS')
+                    if 'dil' in r_nom:
+                        servicios.append('DIL')
+                    if 'mol' in r_nom:
+                        servicios.append('MOL')
+                    if 'env' in r_nom:
+                        servicios.append('ENV')
+                    if 'lab' in r_nom or 'calidad' in r_nom or 'qa' in r_nom:
+                        servicios.append('QC')
+
+                eq = r.equipo
+                self.recursos[codigo] = {
+                    'id': r.id,
+                    'codigo': codigo,
+                    'nombre': r.nombre,
+                    'tipo': r.tipo,
+                    'puede_hacer': servicios,
+                    'parametros': {
+                        'rendimiento': 1.0,
+                        'costo_hora': (eq.costo_depreciacion_hora or 0.0) if eq else 0.0,
+                        'duracion_nominal_min': 30.0
+                    }
+                }
+
+            # 2. Cargar Conexiones Físicas
+            conexiones = session.query(ConexionFisica).filter_by(activa=True).all()
+            id_to_codigo = {r['id']: cod for cod, r in self.recursos.items()}
+            for conn in conexiones:
+                orig_cod = id_to_codigo.get(conn.recurso_origen_id)
+                dest_cod = id_to_codigo.get(conn.recurso_destino_id)
+                if orig_cod and dest_cod:
+                    self.grafo_conectividad[orig_cod].add(dest_cod)
+
+            # 3. Cargar Productos y Rutas
+            productos_bd = session.query(Producto).all()
+            for p in productos_bd:
+                cod_p = p.codigo or f"PROD-{p.id}"
+                etapas_lista = []
+                
+                # Buscar etapas en HolonRuta activa
+                holon = session.query(HolonRuta).filter_by(producto_id=p.id, activa=True).first()
+                if holon and holon.patron:
+                    etapas_patron = getattr(holon.patron, 'etapasRuta', []) or []
+                    for etapa in etapas_patron:
+                        cod_op = etapa.tipoDeOperacion.codigo if etapa.tipoDeOperacion else etapa.nombre
+                        etapas_lista.append({'servicio': cod_op, 'nombre': etapa.nombre})
+                elif holon and holon.asignaciones:
+                    for asig in holon.asignaciones:
+                        etapa_nom = asig.etapa.nombre if asig.etapa else "Etapa"
+                        cod_op = asig.etapa.tipoDeOperacion.codigo if (asig.etapa and asig.etapa.tipoDeOperacion) else etapa_nom
+                        etapas_lista.append({'servicio': cod_op, 'nombre': etapa_nom})
+
+                self.productos[cod_p] = {
+                    'id': p.id,
+                    'codigo': cod_p,
+                    'nombre': p.nombre,
+                    'es_fabricado': p.es_fabricado,
+                    'ruta': etapas_lista
+                }
+
+            return True
+        except Exception as e:
+            self.reporte.agregar('ERROR', 'INTEGRIDAD', f"Error cargando datos de BD: {str(e)}")
+            return False
+
     def ejecutar_diagnostico_completo(self) -> ReporteDiagnostico:
         """Ejecuta las 4 fases de validacion integral."""
         

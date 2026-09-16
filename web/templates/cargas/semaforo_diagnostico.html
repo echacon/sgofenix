@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}Semáforo Pre-Producción - FÉNIX{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="fw-bold mb-1"><i class="bi bi-shield-check text-primary me-2"></i>Semáforo de Validación Pre-Producción</h2>
+                <p class="text-muted mb-0">Control de integridad, conectividad física en grafo (K), rangos de parámetros y prueba en seco.</p>
+            </div>
+            <div>
+                <button id="btnDiagnosticoBD" class="btn btn-primary" onclick="ejecutarDiagnosticoBD()">
+                    <i class="bi bi-arrow-repeat me-1"></i> Diagnosticar Base de Datos Viva
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Banner del Semáforo -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div id="bannerSemaforo" class="card shadow-sm border-0 bg-dark text-white p-4">
+                <div class="d-flex align-items-center justify-content-between flex-wrap">
+                    <div class="d-flex align-items-center gap-3">
+                        <div id="luzSemaforo" class="rounded-circle d-flex align-items-center justify-content-center shadow-lg" style="width: 70px; height: 70px; background-color: #6c757d;">
+                            <i id="iconoSem" class="bi bi-hourglass-split fs-2"></i>
+                        </div>
+                        <div>
+                            <h3 id="tituloSemaforo" class="fw-bold mb-0">DIAGNÓSTICO PENDIENTE</h3>
+                            <p id="descSemaforo" class="text-light mb-0 small">Presione el botón para diagnosticar el estado de la planta.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-4 mt-3 mt-md-0">
+                        <div class="text-center">
+                            <span id="cantErrores" class="fs-3 fw-bold text-danger">0</span>
+                            <div class="small text-muted text-uppercase">Errores Críticos</div>
+                        </div>
+                        <div class="text-center">
+                            <span id="cantAdvertencias" class="fs-3 fw-bold text-warning">0</span>
+                            <div class="small text-muted text-uppercase">Advertencias</div>
+                        </div>
+                        <div class="text-center">
+                            <span id="cantInfo" class="fs-3 fw-bold text-info">0</span>
+                            <div class="small text-muted text-uppercase">Pruebas OK</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subida de Nuevos Paquetes de Configuración -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title fw-bold mb-0"><i class="bi bi-file-earmark-arrow-up me-2 text-primary"></i>Validar Nuevo Paquete de Configuración (YAML / Excel)</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formSubirPaquete" onsubmit="validarNuevoPaquete(event)">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <label class="form-label text-muted small">Seleccione los archivos YAML de planta (recursos, productos, conexiones, taxonomía)</label>
+                                <input type="file" id="archivosConfig" class="form-control" multiple accept=".yaml,.yml,.xlsx" required>
+                            </div>
+                            <div class="col-md-4 mt-3 mt-md-0 d-flex gap-2">
+                                <button type="submit" id="btnValidarPaquete" class="btn btn-outline-primary w-100 mt-md-4">
+                                    <i class="bi bi-search me-1"></i> Validar Paquete
+                                </button>
+                                <button type="button" id="btnAplicarBD" class="btn btn-success w-100 mt-md-4 d-none" onclick="aplicarPaqueteEnBD()">
+                                    <i class="bi bi-database-check me-1"></i> Persistir a BD
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Diagnósticos y Verificaciones -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title fw-bold mb-0"><i class="bi bi-list-check me-2 text-primary"></i>Detalle de Verificaciones</h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary active" onclick="filtrarItems('TODOS')">Todos</button>
+                        <button type="button" class="btn btn-outline-danger" onclick="filtrarItems('ERROR')">Errores</button>
+                        <button type="button" class="btn btn-outline-warning" onclick="filtrarItems('ADVERTENCIA')">Advertencias</button>
+                        <button type="button" class="btn btn-outline-info" onclick="filtrarItems('INFO')">Información / Dry-Run</button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="contenedorItems" class="list-group list-group-flush">
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-clipboard2-pulse fs-1 d-block mb-2 text-secondary"></i>
+                            Ejecute el diagnóstico para ver los resultados de las 4 fases de validación.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let itemsDiagnosticoGlobal = [];
+let tempDirValidado = null;
+
+function renderizarReporte(data) {
+    itemsDiagnosticoGlobal = data.items || [];
+    
+    // Contadores
+    document.getElementById('cantErrores').innerText = data.total_errores || 0;
+    document.getElementById('cantAdvertencias').innerText = data.total_advertencias || 0;
+    document.getElementById('cantInfo').innerText = data.total_info || 0;
+    
+    // Semáforo visual
+    const luz = document.getElementById('luzSemaforo');
+    const icono = document.getElementById('iconoSem');
+    const titulo = document.getElementById('tituloSemaforo');
+    const desc = document.getElementById('descSemaforo');
+    
+    if (data.semaforo === 'VERDE') {
+        luz.style.backgroundColor = '#198754';
+        icono.className = 'bi bi-check-circle-fill fs-2 text-white';
+        titulo.innerText = 'SEMÁFORO VERDE - PLANTA LISTA';
+        titulo.className = 'fw-bold mb-0 text-success';
+        desc.innerText = 'La integridad, conectividad del grafo y parámetros cumplen todas las especificaciones formales.';
+    } else if (data.semaforo === 'AMARILLO') {
+        luz.style.backgroundColor = '#ffc107';
+        icono.className = 'bi bi-exclamation-triangle-fill fs-2 text-dark';
+        titulo.innerText = 'SEMÁFORO AMARILLO - ADVERTENCIAS';
+        titulo.className = 'fw-bold mb-0 text-warning';
+        desc.innerText = 'La planta puede operar, pero se recomienda revisar las advertencias antes de la corrida real.';
+    } else {
+        luz.style.backgroundColor = '#dc3545';
+        icono.className = 'bi bi-x-octagon-fill fs-2 text-white';
+        titulo.innerText = 'SEMÁFORO ROJO - BLOQUEO DE PRODUCCIÓN';
+        titulo.className = 'fw-bold mb-0 text-danger';
+        desc.innerText = 'Existen errores críticos de integridad o rutas rotas que impedirían la ejecución de las órdenes.';
+    }
+    
+    filtrarItems('TODOS');
+}
+
+function filtrarItems(filtro) {
+    const contenedor = document.getElementById('contenedorItems');
+    contenedor.innerHTML = '';
+    
+    const filtrados = itemsDiagnosticoGlobal.filter(item => {
+        if (filtro === 'TODOS') return true;
+        return item.nivel === filtro;
+    });
+    
+    if (filtrados.length === 0) {
+        contenedor.innerHTML = '<div class="p-4 text-center text-muted">No hay registros en esta categoría.</div>';
+        return;
+    }
+    
+    filtrados.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'list-group-item p-3 border-bottom';
+        
+        let badgeClass = 'bg-info text-white';
+        let iconClass = 'bi-info-circle';
+        if (item.nivel === 'ERROR') {
+            badgeClass = 'bg-danger text-white';
+            iconClass = 'bi-x-circle';
+        } else if (item.nivel === 'ADVERTENCIA') {
+            badgeClass = 'bg-warning text-dark';
+            iconClass = 'bi-exclamation-triangle';
+        }
+        
+        div.innerHTML = `
+            <div class="d-flex align-items-start gap-3">
+                <span class="badge ${badgeClass} p-2 rounded-pill"><i class="bi ${iconClass}"></i></span>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-1 fw-bold">${item.mensaje}</h6>
+                        <span class="badge bg-light text-secondary border">${item.categoria}</span>
+                    </div>
+                    ${item.detalles ? `<p class="mb-0 text-muted small mt-1"><code>${item.detalles}</code></p>` : ''}
+                </div>
+            </div>
+        `;
+        contenedor.appendChild(div);
+    });
+}
+
+async function ejecutarDiagnosticoBD() {
+    const btn = document.getElementById('btnDiagnosticoBD');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Diagnosticando...';
+    
+    try {
+        const resp = await fetch('/cargas/api/diagnostico_actual');
+        const data = await resp.json();
+        if (data.success) {
+            renderizarReporte(data);
+        } else {
+            alert('Error en diagnóstico: ' + data.error);
+        }
+    } catch (e) {
+        alert('Error de conexión con el servidor: ' + e);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Diagnosticar Base de Datos Viva';
+    }
+}
+
+async function validarNuevoPaquete(e) {
+    e.preventDefault();
+    const files = document.getElementById('archivosConfig').files;
+    if (!files || files.length === 0) return;
+    
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+        formData.append('archivos', files[i]);
+    }
+    
+    const btn = document.getElementById('btnValidarPaquete');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Validando...';
+    
+    try {
+        const resp = await fetch('/cargas/api/validar_paquete_yaml', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await resp.json();
+        if (data.success) {
+            tempDirValidado = data.temp_dir;
+            renderizarReporte(data);
+            
+            const btnAplicar = document.getElementById('btnAplicarBD');
+            if (data.semaforo !== 'ROJO') {
+                btnAplicar.classList.remove('d-none');
+            } else {
+                btnAplicar.classList.add('d-none');
+            }
+        } else {
+            alert('Error en validación: ' + data.error);
+        }
+    } catch (err) {
+        alert('Error validando paquete: ' + err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-search me-1"></i> Validar Paquete';
+    }
+}
+
+async function aplicarPaqueteEnBD() {
+    if (!tempDirValidado) return;
+    if (!confirm('¿Desea aplicar y persistir esta configuración en la base de datos de producción?')) return;
+    
+    const btn = document.getElementById('btnAplicarBD');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Persistiendo...';
+    
+    try {
+        const resp = await fetch('/cargas/api/aplicar_paquete_yaml', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({temp_dir: tempDirValidado, forzar: true})
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(data.mensaje);
+            btn.classList.add('d-none');
+            ejecutarDiagnosticoBD();
+        } else {
+            alert('Error al aplicar: ' + data.error);
+        }
+    } catch (err) {
+        alert('Error aplicando en BD: ' + err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-database-check me-1"></i> Persistir a BD';
+    }
+}
+
+// Ejecutar diagnóstico automático al cargar la vista
+document.addEventListener('DOMContentLoaded', ejecutarDiagnosticoBD);
+</script>
+{% endblock %}

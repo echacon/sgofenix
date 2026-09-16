@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Planificador y Cotizador ABC - FÉNIX{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="fw-bold mb-1"><i class="bi bi-diagram-3 text-primary me-2"></i>Planificador Holónico y Cotización Dinámica ABC</h2>
+            <p class="text-muted mb-0">Optimización de rutas en grafo, composición selectiva, balance de masa con absorción de mermas y viabilidad económica.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Formulario de Entrada -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title fw-bold mb-0"><i class="bi bi-sliders me-2 text-primary"></i>Parámetros de Producción</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formCotizar" onsubmit="ejecutarCotizacion(event)">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Producto a Fabricar</label>
+                            <select id="productoSelect" class="form-select" required>
+                                <option value="" disabled selected>Seleccione un producto...</option>
+                                {% for prod in productos %}
+                                <option value="{{ prod.id }}">{{ prod.codigo }} - {{ prod.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tamaño del Lote (kg / L)</label>
+                            <input type="number" id="cantidadInput" class="form-control" value="1000" min="1" step="any" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Prioridad de Despacho (1-5)</label>
+                            <select id="prioridadSelect" class="form-select">
+                                <option value="1">1 - Estándar</option>
+                                <option value="2">2 - Media</option>
+                                <option value="3">3 - Alta</option>
+                                <option value="4">4 - Urgente</option>
+                                <option value="5">5 - Crítica / Emergencia</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Cota Máxima de Viabilidad $V_{\text{target}}$ ($)</label>
+                            <input type="number" id="vTargetInput" class="form-control" placeholder="Opcional (Ej. 15000)" step="any">
+                            <div class="form-text small">Descarta rutas cuyo costo total acumulado supere esta cota.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Plazo de Entrega</label>
+                            <input type="datetime-local" id="plazoEntregaInput" class="form-control">
+                        </div>
+
+                        <button type="submit" id="btnCotizar" class="btn btn-primary w-100 py-2 fw-bold">
+                            <i class="bi bi-calculator me-1"></i> Optimizar y Cotizar Ruta
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resultados de Planificación -->
+        <div class="col-lg-8">
+            <div id="panelResultados" class="d-none">
+                <!-- Tarjeta Resumen -->
+                <div class="card shadow-sm border-0 mb-4 border-start border-primary border-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap">
+                            <div>
+                                <span class="badge bg-primary-subtle text-primary mb-1">Ruta Óptima Seleccionada</span>
+                                <h4 id="resNombreRuta" class="fw-bold mb-1">Ruta Estándar</h4>
+                                <p class="text-muted small mb-0">Balance de masa completado y viable económicamente.</p>
+                            </div>
+                            <div class="d-flex gap-4 mt-3 mt-md-0">
+                                <div class="text-end">
+                                    <div class="text-muted small text-uppercase">Costo Total ABC</div>
+                                    <h3 id="resCostoTotal" class="fw-bold text-success mb-0">$0.00</h3>
+                                </div>
+                                <div class="text-end">
+                                    <div class="text-muted small text-uppercase">Costo Unitario ($/kg)</div>
+                                    <h3 id="resCostoUnitario" class="fw-bold text-dark mb-0">$0.00</h3>
+                                </div>
+                                <div class="text-end">
+                                    <div class="text-muted small text-uppercase">Tiempo Estimado</div>
+                                    <h3 id="resTiempoTotal" class="fw-bold text-primary mb-0">0 min</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Etapas y Costeo Paso a Paso -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="card-title fw-bold mb-0"><i class="bi bi-table me-2 text-primary"></i>Desglose Holónico por Etapa del Proceso</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small text-uppercase">
+                                <tr>
+                                    <th>Etapa</th>
+                                    <th>Recurso Asignado</th>
+                                    <th class="text-end">Duración</th>
+                                    <th class="text-end">Materia Prima</th>
+                                    <th class="text-end">Procesamiento (ABC)</th>
+                                    <th class="text-end">Trasvase</th>
+                                    <th class="text-end">Costo Acum.</th>
+                                    <th class="text-end">Costo Unitario</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaEtapasBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Botón de Lanzamiento de Orden -->
+                <div class="card shadow-sm border-0 bg-light p-3 text-end">
+                    <div>
+                        <button class="btn btn-success px-4 py-2 fw-bold" onclick="crearOrdenPlanificada()">
+                            <i class="bi bi-play-circle-fill me-1"></i> Confirmar y Lanzar Orden a Planta
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado Vacío Inicial -->
+            <div id="panelVacio" class="card shadow-sm border-0 p-5 text-center text-muted">
+                <i class="bi bi-cpu fs-1 d-block mb-3 text-secondary"></i>
+                <h5 class="fw-bold">Seleccione los parámetros y presione "Optimizar y Cotizar Ruta"</h5>
+                <p class="small text-muted mb-0">El algoritmo evaluará el grafo de planta físico, tiempos de trasvase y tasas horarias ABC en tiempo real.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let planCalculadoActual = null;
+
+async function ejecutarCotizacion(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnCotizar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Optimizando...';
+    
+    const payload = {
+        producto_id: parseInt(document.getElementById('productoSelect').value),
+        cantidad: parseFloat(document.getElementById('cantidadInput').value),
+        prioridad: parseInt(document.getElementById('prioridadSelect').value),
+        v_target: document.getElementById('vTargetInput').value ? parseFloat(document.getElementById('vTargetInput').value) : null
+    };
+    
+    try {
+        const resp = await fetch('/planificador/api/cotizar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        
+        if (data.success) {
+            planCalculadoActual = data.plan;
+            renderizarResultados(data.plan);
+        } else {
+            alert('Error en planificación: ' + data.error);
+        }
+    } catch (err) {
+        alert('Error conectando al servidor: ' + err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-calculator me-1"></i> Optimizar y Cotizar Ruta';
+    }
+}
+
+function renderizarResultados(plan) {
+    document.getElementById('panelVacio').classList.add('d-none');
+    document.getElementById('panelResultados').classList.remove('d-none');
+    
+    document.getElementById('resNombreRuta').innerText = plan.holon_ruta_nombre;
+    document.getElementById('resCostoTotal').innerText = `$${plan.costo_total.toFixed(2)}`;
+    document.getElementById('resCostoUnitario').innerText = `$${plan.costo_unitario.toFixed(4)}`;
+    document.getElementById('resTiempoTotal').innerText = `${plan.duracion_total_min.toFixed(0)} min`;
+    
+    const tbody = document.getElementById('tablaEtapasBody');
+    tbody.innerHTML = '';
+    
+    for (const [etapaNom, info] of Object.entries(plan.asignacion)) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-bold">${etapaNom}</td>
+            <td><span class="badge bg-light text-dark border">${info.recurso_nombre}</span></td>
+            <td class="text-end">${info.duracion_min.toFixed(1)} min</td>
+            <td class="text-end">$${info.costo_materia_prima.toFixed(2)}</td>
+            <td class="text-end">$${info.costo_procesamiento.toFixed(2)}</td>
+            <td class="text-end">$${info.costo_trasvase.toFixed(2)}</td>
+            <td class="text-end fw-bold text-primary">$${info.costo_acumulado_etapa.toFixed(2)}</td>
+            <td class="text-end fw-bold text-success">$${info.costo_unitario_etapa.toFixed(4)}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+}
+
+async function crearOrdenPlanificada() {
+    if (!planCalculadoActual) return;
+    
+    const payload = {
+        producto_id: parseInt(document.getElementById('productoSelect').value),
+        cantidad: parseFloat(document.getElementById('cantidadInput').value),
+        prioridad: parseInt(document.getElementById('prioridadSelect').value),
+        v_target: document.getElementById('vTargetInput').value ? parseFloat(document.getElementById('vTargetInput').value) : null,
+        plazo_entrega: document.getElementById('plazoEntregaInput').value || null
+    };
+    
+    try {
+        const resp = await fetch('/planificador/api/crear_orden_optimizada', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        
+        if (data.success) {
+            alert(`✅ ${data.mensaje}\n\nOrden ID: ${data.orden_id} creada en estado pendiente.`);
+            window.location.href = '/operador';
+        } else {
+            alert('Error al crear orden: ' + data.error);
+        }
+    } catch (err) {
+        alert('Error: ' + err);
+    }
+}
+</script>
+{% endblock %}

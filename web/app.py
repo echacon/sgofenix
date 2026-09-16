@@ -18,6 +18,9 @@ sys.path.insert(0, str(WEB_DIR))
 from routes.auth import auth_bp
 from routes.carga_recursos import carga_recursos_bp
 from routes.operador import operador_bp
+from routes.cargas_validadas import cargas_validadas_bp
+from routes.planificador import planificador_bp
+from routes.aprendizaje import aprendizaje_bp
 
 # Modelos y servicios del núcleo FÉNIX
 from modelos.DocumentosNegocio import OrdenProduccion
@@ -39,8 +42,7 @@ SessionLocal = sessionmaker(bind=engine)
 
 # ==================== ORQUESTADOR GLOBAL (compartido) ====================
 # El orquestador se crea una sola vez y se reutiliza en toda la app
-# Nota: No configuramos refinamientos ni mapeos manuales; esos vienen de BD.
-motor = MotorABTPPN()  # sin directorio PNML, porque las redes se cargan desde BD
+motor = MotorABTPPN()
 orquestador = Orquestador(motor, SessionLocal())
 orquestador.cargar_configuracion_desde_bd()
 
@@ -48,7 +50,7 @@ orquestador.cargar_configuracion_desde_bd()
 app.config['ENGINE'] = engine
 app.config['SESSION_MAKER'] = SessionLocal
 app.config['ORQUESTADOR'] = orquestador
-app.config['MOTOR'] = motor  # por si alguna ruta vieja lo necesita, pero idealmente usar orquestador
+app.config['MOTOR'] = motor
 
 # ==================== SERVICIOS ====================
 def get_seguimiento():
@@ -60,6 +62,9 @@ def get_seguimiento():
 app.register_blueprint(auth_bp)
 app.register_blueprint(carga_recursos_bp)
 app.register_blueprint(operador_bp)
+app.register_blueprint(cargas_validadas_bp)
+app.register_blueprint(planificador_bp)
+app.register_blueprint(aprendizaje_bp)
 
 # ==================== RUTAS PRINCIPALES ====================
 @app.route('/')
