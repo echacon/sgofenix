@@ -21,7 +21,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-RAIZ = Path(__file__).parent
+RAIZ = Path(__file__).resolve().parent
+ROOT_DIR = RAIZ.parent
+sys.path.insert(0, str(ROOT_DIR))
 sys.path.insert(0, str(RAIZ))
 
 from servicios.orquestador import Orquestador
@@ -38,7 +40,8 @@ INTERVALO_SEGUNDOS = 5          # Ciclo del orquestador
 MAX_ITERACIONES_ESTABILIZACION = 20
 
 # ---------- Conexión a BD ----------
-engine = create_engine('sqlite:///fenix.db')
+DB_PATH = RAIZ / 'fenix.db'
+engine = create_engine(f"sqlite:///{DB_PATH.as_posix()}")
 Session = sessionmaker(bind=engine)
 
 # ---------- Inicialización global ----------

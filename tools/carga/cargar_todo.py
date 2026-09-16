@@ -10,23 +10,27 @@ from pathlib import Path
 import logging
 from sqlalchemy import text
 
-# Añadir raíz del proyecto
-RAIZ = Path(__file__).parent.parent
-sys.path.insert(0, str(RAIZ))
+# Añadir rutas del proyecto y de fenix
+SCRIPT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = SCRIPT_DIR.parent.parent
+FENIX_DIR = ROOT_DIR / "fenix"
+sys.path.insert(0, str(ROOT_DIR))
+sys.path.insert(0, str(FENIX_DIR))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from modelos.declarative_base import SessionLocal, engine, Base
 
-# Importar funciones de carga (ajusta según los nombres reales de tus scripts)
-from scripts.cargar_ontologia_completo import (
+# Importar funciones de carga locales
+from cargar_ontologia_completo import (
     cargar_unidades_funcionales,
     cargar_tipos_operacion,
     cargar_patrones,
     cargar_conexiones_fisicas
 )
-from scripts.cargar_recursos import cargar_recursos
-from scripts.cargar_rutas_y_encadenamiento import procesar_todas_rutas
-from scripts.cargar_productos import cargar_productos
-from scripts.cargar_asignaciones import cargar_asignaciones_global
+from cargar_recursos import cargar_recursos
+from cargar_rutas_y_encadenamiento import procesar_todas_rutas
+from cargar_productos import cargar_productos
+from cargar_asignaciones import cargar_asignaciones_global
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

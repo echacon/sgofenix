@@ -2,8 +2,9 @@
 
 from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app, send_file
 from werkzeug.utils import secure_filename
+from pathlib import Path
 from modelos.declarative_base import SessionLocal
-from scripts.cargar_recursos import cargar_recursos as importar_recursos_yaml
+from tools.carga.cargar_recursos import cargar_recursos as importar_recursos_yaml
 import os
 import yaml
 
@@ -18,11 +19,12 @@ def allowed_file(filename):
 @carga_recursos_bp.route('/cargar/recursos/plantilla')
 def descargar_plantilla():
     """Descarga el archivo 04_recursos.yaml como plantilla"""
-    path = os.path.join(current_app.root_path, 'ontologia', 'empresa', '04_recursos.yaml')
-    if not os.path.exists(path):
+    root_dir = Path(__file__).resolve().parent.parent.parent
+    path = root_dir / 'fenix' / 'ontologia' / 'empresa' / '04_recursos.yaml'
+    if not path.exists():
         flash('La plantilla de recursos no se encuentra en el servidor.', 'error')
         return redirect(url_for('carga_recursos.cargar_recursos'))
-    return send_file(path, as_attachment=True, download_name='recursos.yaml')
+    return send_file(str(path), as_attachment=True, download_name='recursos.yaml')
 
 @carga_recursos_bp.route('/cargar/recursos', methods=['GET', 'POST'])
 def cargar_recursos():

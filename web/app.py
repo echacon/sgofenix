@@ -1,14 +1,25 @@
+import sys
+import os
+import json
+from pathlib import Path
+from datetime import datetime
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+# Configuración de rutas de importación para FÉNIX Core y Web
+ROOT_DIR = Path(__file__).resolve().parent.parent
+FENIX_DIR = ROOT_DIR / "fenix"
+WEB_DIR = ROOT_DIR / "web"
+sys.path.insert(0, str(ROOT_DIR))
+sys.path.insert(0, str(FENIX_DIR))
+sys.path.insert(0, str(WEB_DIR))
+
 from routes.auth import auth_bp
 from routes.carga_recursos import carga_recursos_bp
 from routes.operador import operador_bp
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from datetime import datetime
-import os
-import json
 
-# Modelos y servicios
+# Modelos y servicios del núcleo FÉNIX
 from modelos.DocumentosNegocio import OrdenProduccion
 from modelos.ProcesoOcurrente import InstanciaRed
 from servicios.seguimiento_ordenes import ServicioSeguimiento
@@ -17,11 +28,12 @@ from servicios.orquestador import Orquestador
 from utils.motor_abtppn import MotorABTPPN
 
 # Inicializar Flask
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(WEB_DIR / "templates"), static_folder=str(WEB_DIR / "static"))
 app.secret_key = 'fenix-pyme-2024-cambiar-en-produccion'
 
 # ==================== CONFIGURACIÓN BD ====================
-DATABASE_URL = 'sqlite:///fenix.db'
+DB_PATH = FENIX_DIR / 'fenix.db'
+DATABASE_URL = f"sqlite:///{DB_PATH.as_posix()}"
 engine = create_engine(DATABASE_URL, connect_args={'check_same_thread': False})
 SessionLocal = sessionmaker(bind=engine)
 
