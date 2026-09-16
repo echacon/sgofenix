@@ -68,6 +68,12 @@ class Orquestador:
                         self.mapeo_mensajes.setdefault(
                             (red_origen, trans_nombre), []
                         ).append((red_destino, evento_destino))
+                        
+                        red_origen_limpio = red_origen.replace('.pnml', '').strip()
+                        if red_origen_limpio != red_origen:
+                            self.mapeo_mensajes.setdefault(
+                                (red_origen_limpio, trans_nombre), []
+                            ).append((red_destino, evento_destino))
         
         logger.info(f"📬 Configuración cargada: {len(self.mapeo_mensajes)} reglas")
         return True
@@ -750,11 +756,48 @@ class Orquestador:
         
         return todas_terminadas
 
+    def forzar_cierre_por_error_seguimiento(self, orden_id: int, motivo: str = "Pérdida de eventos intermedios"):
+        """
+        Cierra forzosamente la orden y sus instancias activas cuando se detecta
+        un salto o pérdida de telemetría (Tracking Error) y llega el evento final.
+        Marca las instancias con tipo_terminacion='error_seguimiento' y excluye
+        la orden del bucle de auto-calibración EWMA/EDR.
+        """
+        instancias = self.session.query(InstanciaRed).filter_by(
+            orden_id=orden_id, activa=True
+        ).all()
+        
+        for inst_bd in instancias:
+            inst_bd.completada = True
+            inst_bd.tipo_terminacion = 'error_seguimiento'
+            inst_bd.lugar_terminacion = 'cierre_forzado'
+            inst_bd.activa = False
+            inst_bd.fecha_cierre = datetime.now()
+            
+            mem_id = self._buscar_instancia_red(orden_id, inst_bd.tipo)
+            if mem_id and mem_id in self.motor.instancias:
+                self.motor.instancias[mem_id].completada = True
+                self.motor.instancias[mem_id].bloqueada = True
+                
+        orden = self.session.query(OrdenProduccion).get(orden_id)
+        if orden:
+            orden.estado = 'completada'
+            orden.fecha_fin = datetime.now()
+            
+        self.session.commit()
+        logger.warning(f"⚠️ Orden {orden_id} cerrada por error_seguimiento: {motivo}. Excluida de calibración EWMA.")
+
     def ejecutar_aprendizaje_orden(self, orden_id: int):
         """
         Analiza el historial de eventos de la orden y recalcula la eficiencia
         real de los recursos usando un suavizado EWMA (alfa = 0.2).
+        Omite órdenes que hayan concluido con 'error_seguimiento' para no distorsionar estadísticas.
         """
+        instancias = self.session.query(InstanciaRed).filter_by(orden_id=orden_id).all()
+        if any(inst.tipo_terminacion == 'error_seguimiento' for inst in instancias):
+            logger.warning(f"🚫 Omitiendo calibración EWMA/EDR para orden {orden_id}: terminación con 'error_seguimiento' (telemetría incompleta).")
+            return
+
         logger.info(f"🧠 Iniciando bucle de aprendizaje EWMA para orden {orden_id}...")
         
         eventos = self.session.query(EventoRed).filter(
@@ -852,26 +895,17 @@ class Orquestador:
 
                 inst_mem_id = self._buscar_instancia_red(msg.orden_id, msg.red_destino)
                 if not inst_mem_id:
-                    logger.debug("Instancia en memoria no encontrada, descartando mensaje")
-                    msg.consumido = True
-                    self.session.commit()
-                    hubo_cambios = True
+                    logger.debug(f"Instancia en memoria '{msg.red_destino}' no activa para orden {msg.orden_id}, mensaje en espera")
                     continue
 
                 instancia = self.motor.instancias.get(inst_mem_id)
                 if not instancia:
-                    logger.debug("Instancia no encontrada en motor, descartando mensaje")
-                    msg.consumido = True
-                    self.session.commit()
-                    hubo_cambios = True
+                    logger.debug(f"Instancia no encontrada en motor para {msg.red_destino}, mensaje en espera")
                     continue
                 
                 trans_id = self._buscar_transicion_por_nombre(instancia, msg.evento)
                 if not trans_id:
-                    logger.debug(f"Transición '{msg.evento}' no encontrada en {instancia.red_nombre}, descartando mensaje")
-                    msg.consumido = True
-                    self.session.commit()
-                    hubo_cambios = True
+                    logger.debug(f"Transición '{msg.evento}' no encontrada aún en {instancia.red_nombre}, mensaje en espera")
                     continue
 
                 if self.motor.transicion_habilitada(inst_mem_id, trans_id, tiene_mensaje_red=True):
@@ -951,19 +985,21 @@ class Orquestador:
             
             inst_mem_id = self._buscar_instancia_red(msg.orden_id, msg.red_destino)
             if not inst_mem_id:
-                msg.consumido = True
-                self.session.commit()
+                logger.debug(f"Instancia '{msg.red_destino}' no encontrada en memoria para orden {msg.orden_id}, esperando...")
                 continue
             
             instancia = self.motor.instancias.get(inst_mem_id)
+            if not instancia:
+                logger.debug(f"Instancia {msg.red_destino} no encontrada en motor, esperando...")
+                continue
+
             trans_id = self._buscar_transicion_por_nombre(instancia, msg.evento)
-            
             if not trans_id:
-                msg.consumido = True
-                self.session.commit()
+                logger.debug(f"Transición '{msg.evento}' no encontrada en {instancia.red_nombre}, esperando...")
                 continue
             
             if not self.motor.transicion_habilitada(inst_mem_id, trans_id, tiene_mensaje_red=True):
+                logger.debug(f"Transición '{msg.evento}' ({trans_id}) en {instancia.red_nombre} aún no está habilitada por marcado, esperando avance...")
                 continue
             
             token = TokenColoreado(
@@ -1011,22 +1047,28 @@ class Orquestador:
     
     def _generar_mensajes_salida(self, instancia_mem_id: int, trans_id: str, transicion, token: TokenColoreado):
         """Genera mensajes según mapeo de encadenamiento"""
-        logger.debug(f"Generando mensajes para transición {trans_id}")
-        
         instancia = self.motor.instancias.get(instancia_mem_id)
         if not instancia:
-            logger.debug("No se encontró instancia")
             return
         
-        # Usar el ID de la transición (t1, t41, etc.) como clave
-        clave = (instancia.red_nombre, trans_id)
+        # Buscar mensajes con clave técnica (ID) y con clave descriptiva (Nombre)
+        nombre_trans = getattr(transicion, 'nombre', '') or ''
+        claves_a_buscar = [
+            (instancia.red_nombre, trans_id),
+            (instancia.red_nombre, nombre_trans),
+            (instancia.red_nombre.replace('.pnml', ''), trans_id),
+            (instancia.red_nombre.replace('.pnml', ''), nombre_trans),
+        ]
         
-        logger.debug(f"Buscando mensajes para clave: {clave}")
-        
-        mensajes_destino = self.mapeo_mensajes.get(clave, [])
+        mensajes_destino = []
+        for c in claves_a_buscar:
+            if c in self.mapeo_mensajes:
+                for dest in self.mapeo_mensajes[c]:
+                    if dest not in mensajes_destino:
+                        mensajes_destino.append(dest)
         
         for red_destino, evento_destino in mensajes_destino:
-            red_destino_limpio = red_destino.replace('.pnml', '')
+            red_destino_limpio = red_destino.replace('.pnml', '').strip()
             msg = MensajePendiente(
                 orden_id=instancia.orden_id,
                 red_origen=instancia.red_nombre,
@@ -1043,7 +1085,7 @@ class Orquestador:
             )
             self.session.add(msg)
             self.session.commit()
-            logger.info(f"   📬 Mensaje CREADO: {clave[0]}.{clave[1]} → {red_destino}.{evento_destino}")
+            logger.info(f"   📬 Mensaje CREADO: {instancia.red_nombre}.{trans_id} ({nombre_trans}) → {red_destino}.{evento_destino}")
             
 
     def iniciar_bucle(self, session_factory, intervalo_segundos=5):
@@ -1102,17 +1144,38 @@ class Orquestador:
     # ==================== MÉTODOS AUXILIARES ====================
     
     def _buscar_instancia_red(self, orden_id: int, red_nombre: str) -> Optional[int]:
+        if not red_nombre:
+            return None
+        red_norm = red_nombre.replace('.pnml', '').strip().lower()
         for mem_id, inst in self.motor.instancias.items():
-            if inst.orden_id == orden_id and inst.red_nombre == red_nombre:
-                return mem_id
+            if inst.orden_id == orden_id:
+                inst_norm = inst.red_nombre.replace('.pnml', '').strip().lower()
+                if inst_norm == red_norm or red_norm in inst_norm or inst_norm in red_norm:
+                    return mem_id
         return None
     
     def _buscar_transicion_por_nombre(self, instancia, nombre: str) -> Optional[str]:
-        nombre_norm = nombre.strip().lower() if nombre else ""
+        if not nombre:
+            return None
+        nombre_norm = nombre.strip().lower()
+        
+        # 1. Búsqueda directa por ID técnico de transición
+        for trans_id in instancia.red.transitions.keys():
+            if trans_id.strip().lower() == nombre_norm:
+                return trans_id
+                
+        # 2. Búsqueda exacta por nombre legible normalizado
         for trans_id, transicion in instancia.red.transitions.items():
             nombre_trans = transicion.nombre.strip().lower() if transicion.nombre else ""
             if nombre_trans == nombre_norm:
                 return trans_id
+                
+        # 3. Búsqueda flexible / substring (ignora diferencias menores de espaciado o prefijos)
+        for trans_id, transicion in instancia.red.transitions.items():
+            nombre_trans = transicion.nombre.strip().lower() if transicion.nombre else ""
+            if nombre_trans and (nombre_norm in nombre_trans or nombre_trans in nombre_norm):
+                return trans_id
+                
         return None
     
     # ==================== PERSISTENCIA ====================

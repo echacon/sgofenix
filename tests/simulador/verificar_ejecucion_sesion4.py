@@ -9,8 +9,14 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# Agregar el directorio raíz de fenix al path
-sys.path.append(str(Path(__file__).parent.parent.parent))
+# Configurar stdout a UTF-8
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+FENIX_DIR = ROOT_DIR / "fenix"
+sys.path.insert(0, str(ROOT_DIR))
+sys.path.insert(0, str(FENIX_DIR))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

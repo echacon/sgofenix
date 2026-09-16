@@ -3,7 +3,11 @@ import sys
 import json
 from pathlib import Path
 from datetime import datetime
-sys.path.insert(0, str(Path(__file__).parent))
+
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+FENIX_DIR = ROOT_DIR / "fenix"
+sys.path.insert(0, str(ROOT_DIR))
+sys.path.insert(0, str(FENIX_DIR))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -11,6 +15,7 @@ from servicios.orquestador import Orquestador
 from utils.motor_abtppn import MotorABTPPN
 from modelos.RedPetri import RedPetri
 from modelos.ProcesoOcurrente import InstanciaRed
+from modelos.DocumentosNegocio import OrdenProduccion
 
 
 class ProcesadorSecuencia:
@@ -20,20 +25,12 @@ class ProcesadorSecuencia:
         self.ultimo_procesado = 0
         
         # Conectar a BD
-        self.engine = create_engine("sqlite:///fenix.db")
+        db_path = FENIX_DIR / "fenix.db"
+        self.engine = create_engine(f"sqlite:///{db_path.as_posix()}")
         self.Session = sessionmaker(bind=self.engine)
         self.session = self.Session()
 
         self.orden_id = None
-        if self.eventos and len(self.eventos) > 0:
-            self.orden_id = self.eventos[0].get('orden_id')
-            if self.orden_id:
-                orden = self.session.query(OrdenProduccion).get(self.orden_id)
-                if orden and orden.estado in ('completada', 'fallida', 'cancelada'):
-                    print(f"⚠️ La orden {self.orden_id} ya está {orden.estado}. No se procesarán eventos.")
-                    self.orden_completada = True
-                else:
-                    self.orden_completada = False
         
         # Crear orquestador
         self.motor = MotorABTPPN()
@@ -49,6 +46,17 @@ class ProcesadorSecuencia:
         
         # Cargar eventos
         self.cargar_eventos()
+        
+        if self.eventos and len(self.eventos) > 0:
+            self.orden_id = self.eventos[0].get('orden_id')
+            if self.orden_id:
+                orden = self.session.query(OrdenProduccion).get(self.orden_id)
+                if orden and orden.estado in ('completada', 'fallida', 'cancelada'):
+                    print(f"⚠️ La orden {self.orden_id} ya está {orden.estado}.")
+                    self.orden_completada = True
+                else:
+                    self.orden_completada = False
+
         self.cargar_instancias_existentes()
     
     def cargar_instancias_existentes(self):
@@ -143,7 +151,7 @@ class ProcesadorSecuencia:
             orden_id=evento.get('orden_id'),
             red_nombre=evento.get('red'),
             evento_nombre=evento.get('transicion'),
-            recurso_id=evento.get('recurso'),
+            recurso_nombre=evento.get('recurso'),
             timestamp=datetime.fromisoformat(evento.get('timestamp'))
         )
         

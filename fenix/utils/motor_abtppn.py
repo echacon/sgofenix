@@ -248,14 +248,17 @@ class MotorABTPPN:
             return False
         
         trigger = getattr(transicion, 'trigger', None)
+        trigger_str = str(trigger).strip() if trigger is not None else None
+        if trigger_str in ('None', 'none', ''):
+            trigger_str = None
         
-        if trigger is None:
+        if trigger_str is None:
             return True
-        elif trigger == '200':
+        elif trigger_str == '200':
             return tiene_mensaje_externo
-        elif trigger == '201':
+        elif trigger_str == '201':
             return tiene_mensaje_red
-        elif trigger == '202':
+        elif trigger_str == '202':
             return self._verificar_temporizador_expirado(instancia_id, trans_id)
         
         logger.warning(f"Trigger desconocido: {trigger}")
@@ -375,7 +378,11 @@ class MotorABTPPN:
         automaticas = []
         for trans_id, transicion in instancia.red.transitions.items():
             trigger = getattr(transicion, 'trigger', None)
-            if trigger is None:
+            trigger_str = str(trigger).strip() if trigger is not None else None
+            if trigger_str in ('None', 'none', ''):
+                trigger_str = None
+                
+            if trigger_str is None:
                 if self._verificar_precondiciones(instancia, trans_id):
                     automaticas.append(trans_id)
                     logger.debug(f"   Automática habilitada: {transicion.nombre}")

@@ -109,6 +109,7 @@ def cargar_instancias_activas():
 def procesar_nuevas_ordenes():
     session = Session()
     try:
+        orquestador.session = session
         ordenes_pendientes = session.query(OrdenProduccion).filter_by(estado='pendiente').all()
         if not ordenes_pendientes:
             return
@@ -130,6 +131,7 @@ def procesar_eventos_cola():
     session = Session()
     evento = None  # Para manejar excepción
     try:
+        orquestador.session = session
         # Obtener siguiente evento pendiente (FIFO)
         evento = session.query(ColaEvento).filter_by(estado='pendiente').order_by(ColaEvento.fecha_creacion).first()
         if not evento:
@@ -217,9 +219,8 @@ def bucle_principal():
             procesar_eventos_cola()
 
             # 3. Procesar mensajes pendientes (handshakes) y automáticas en segundo plano
-            #    Esto ya se hace dentro de estabilizar_red después de cada evento,
-            #    pero también podemos hacer un barrido periódico por si quedaron colgados.
             with Session() as session:
+                orquestador.session = session
                 ordenes_activas = session.query(OrdenProduccion).filter(
                     OrdenProduccion.estado.in_(['en_produccion', 'pendiente'])
                 ).all()

@@ -73,7 +73,7 @@ def recargar_instancias_desde_bd():
                 nueva_instancia.red = red
                 motor.instancias[motor.proximo_id] = nueva_instancia
                 motor.proximo_id += 1
-                print(f"🔄 Instancia recargada: ID {nueva_instancia.id} (BD: {inst_bd.id}, tipo: {red_nombre})")
+                # Instancia recargada correctamente
     
     session.close()
 
@@ -189,27 +189,19 @@ def api_instancia_transiciones(instancia_id):
         
         # Buscar en instancias del motor
         for mem_id, inst_mem in motor.instancias.items():
-            print(f"   Comparando mem_id={mem_id}, instancia_bd_id={inst_mem.instancia_bd_id}")
             if inst_mem.instancia_bd_id == instancia_id:
                 transiciones = motor.obtener_transiciones_habilitadas(mem_id, tiene_mensaje_externo=True)
                 transiciones_habilitadas = [
                     {'id': tid, 'nombre': inst_mem.red.transitions[tid].nombre or tid} 
                     for tid in transiciones
                 ]
-                print(f"   ✅ Encontrada! Transiciones: {transiciones_habilitadas}")
                 break
-        
-        if not transiciones_habilitadas:
-            print(f"   ⚠️ No se encontraron transiciones para instancia {instancia_id}")
         
         session.close()
         return jsonify({'success': True, 'instancia_id': instancia_id, 'transiciones': transiciones_habilitadas})
     
     except Exception as e:
         session.close()
-        print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -560,7 +552,7 @@ def api_crear_orden():
             'success': True,
             'orden_id': orden_id,
             'numero_orden': numero_orden,
-            'mensaje': f'Orden {numero_orden} planificada con éxito. Costo ABC estimado: ${plan["costo_total"]:.2f}. Iniciando orquestación...'
+            'mensaje': f'Orden {numero_orden} creada con éxito en estado pendiente. Iniciando orquestación...'
         })
         
     except Exception as e:
