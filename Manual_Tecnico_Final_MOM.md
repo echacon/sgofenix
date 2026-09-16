@@ -1,146 +1,246 @@
-# Manual Técnico de Arquitectura e Integración MOM
-
-## 0. Filosofía de Diseño: El Sistema FÉNIX
-
-FÉNIX representa un cambio de paradigma en la automatización de operaciones de manufactura, evolucionando desde los modelos clásicos de control jerárquico vertical (como las estructuras rígidas ISA-95 implementadas históricamente en grandes sectores como PDVSA) hacia un **enfoque holónico y autónomo distribuido**. Para una comprensión profunda de este marco evolutivo y sus pilares de diseño, consulta el documento principal de la [Filosofía de Integración Holónica](file:///C:/Users/echac/Documents/gemini/Filosofia_Integracion_Holonica.md).
-
-El sistema se basa en la convergencia de **Redes de Petri Coloreadas (CPN)** y la **Arquitectura Holónica**. Está diseñado para ser "fault-tolerant" (tolerante a fallos), permitiendo la reconstrucción completa del estado de planta a partir de los logs de eventos transaccionales persistidos en base de datos.
-
-### 0.1. El Token Coloreado (Entidad de Trazabilidad)
-Cada lote de producción se representa por un objeto `TokenColoreado` que viaja por las redes acumulando:
-*   `o`: Identificador de la orden.
-*   `m`: Masa/Material actual (ajustado por mermas $\gamma$).
-*   `c`: Costo acumulado (ABC - Activity Based Costing).
-*   `t`: Timestamp de los eventos.
-
-### 0.2. Ontología de Objetos
-*   **Continuants (Saber Hacer):** Entidades estáticas como `Recurso`, `HolonRuta`, `Producto`.
-*   **Perdurants (El Hacer):** Entidades dinámicas con duración como `InstanciaRed`, `OrdenProduccion`, `EventoRed`.
+# Manual Técnico de Arquitectura, Integración y Modelado Matemático MOM (FÉNIX)
 
 ---
 
-## 1. Arquitectura de Implantación (HPU - Holonic Production Unit)
-El sistema implementa una arquitectura de tres capas para cada **Holón Recurso**:
+## 0. Filosofía y Génesis del Sistema FÉNIX
 
-### 1.1. Capa de Gestión (Nivel MES)
-Responsable de la negociación de compromisos y mantenimiento de los Gemelos Digitales. 
-*   **Mecanismo:** "Llamada a Ofertas" para asignar órdenes basadas en costo y disponibilidad.
-*   **Optimización:** Algoritmo Branch-and-Bound sobre el árbol de alcanzabilidad de las Redes de Petri.
+El sistema **FÉNIX** (Manufacturing Operations Management - MOM) representa un cambio de paradigma en la automatización y control de operaciones industriales. Nace de la evolución histórica desde los modelos rígidos de control jerárquico vertical (como los esquemas clásicos **ISA-95** implementados históricamente en grandes sectores como la industria petroquímica) hacia un **enfoque holónico, distribuido y orientado a actividades**.
 
-### 1.2. Capa de Ejecución (Nivel SCADA)
-Supervisa el proceso en tiempo real y gestiona los **Acuerdos de Coordinación** (Handshakes).
-
-#### El Motor de Orquestación (Symphony Parser)
-El sistema utiliza un DSL en YAML (basado en Symphony Workflow) para definir los procedimientos. El motor de ejecución traduce este YAML a una Red de Petri Coloreada (CPN) siguiendo estas reglas:
-*   **Places:** Definidos en la sección `estaciones` del YAML. Cada estación representa un estado posible del token.
-*   **Transitions:** Definidas en la sección `acciones`.
-    *   `cuando: [A, B]`: Genera arcos de entrada desde los lugares A y B (Join/Sincronización).
-    *   `mueve_a: [C, D]`: Genera arcos de salida hacia los lugares C y D (Split/Paralelismo).
-*   **Triggers:** Mapeados a partir del campo `tipo`:
-    *   `Manual`: Trigger 200 (Evento externo).
-    *   `Sincronizado`: Trigger 201 (Mensaje entre redes).
-    *   `Automatico`: Trigger `none`.
-
-### 1.3. Capa Física
-Interfaz agnóstica al nivel de automatización (PLCs, Sensores o Tablets para operarios).
-
----
-
-## 2. Convergencia IT/OT
-El sistema MOM actúa como el "Sistema Nervioso Central" de la producción, conectando los objetivos de negocio (IT) con la ejecución física (OT). Su diseño se basa en **Holones cooperativos** que permiten una orquestación distribuida y resiliente.
-
----
-
-## 2. Los Tres Niveles de Madurez Digital
-El sistema se adapta dinámicamente según la versión seleccionada por el usuario, manteniendo la misma base de datos pero activando diferentes motores de lógica.
-
-### 2.1. V1: MOM Manual (Modo Taller/PyME)
-*   **Enfoque:** Digitalización básica de procesos manuales.
-*   **Captura:** Formularios Web simplificados.
-*   **Lógica:** Secuenciación FIFO/Prioridad. El operario es el sensor principal.
-
-### 2.2. V2: MOM Híbrido (Modo Crecimiento)
-*   **Enfoque:** Seguimiento de flujo y eficiencia.
-*   **Captura:** Mixta (Web + IoT básico/PLCs aislados).
-*   **Lógica:** Capacidad Finita. Control de materiales por lotes y estados de máquina.
-
-### 2.3. V3: MOM Avanzado (Smart Factory)
-*   **Enfoque:** Orquestación autónoma y conectividad total.
-*   **Captura:** Automática vía SCADA/OPC-UA/MQTT.
-*   **Lógica:** Orquestación PPR (**Producto, Proceso, Recurso**) con grafo de conectividad, basada en **Holones**.
-
----
-
-## 3. El Modelo de Conectividad y Orquestación (V3)
-En la versión avanzada, el sistema utiliza un **Holón de Ruta** (o Grafo de Transferencia) para decidir la ruta óptima de fabricación.
-
-### 3.1. Definición del Grafo de Recursos
-Cada **Holón de Recurso** define sus "puertos" de salida y entrada hacia otros recursos. Esto permite al planificador calcular el **Tiempo de Tránsito** y gestionar el **Handshake de Transferencia** (protocolo de intercambio de información entre máquinas).
-
-
-### 3.2. Sincronización SCADA
-El sistema se suscribe a tags específicos para detectar eventos de:
-*   `Order_Start` / `Order_Complete`.
-*   `Machine_State` (Producción, Parada, Mantenimiento).
-*   `Real_Consumption` (kWh, kg, unidades).
-
-### 3.3. Validación de Invariantes Físicos y Compuertas de Calidad (QA Loops)
-El sistema intercepta la telemetría recibida desde los PLCs o estaciones SCADA para realizar dos tipos de validación en tiempo real:
-
-1.  **Validación de Invariantes (`InvariantePaso`):** 
-    Antes del disparo de cualquier transición discreta (evento de fin de paso), el orquestador compara las lecturas físicas promediadas del paso actual (ej. `Temperatura`, `Velocidad`) contra los límites definidos en la base de datos para esa asignación de recurso. Si se detecta una violación:
-    $$\text{Lectura} > \text{valor\_maximo} \quad \text{o} \quad \text{Lectura} < \text{valor\_minimo}$$
-    El orquestador bloquea el disparo de la transición, registra la anomalía en el log de eventos (`EventoRed.invariantes`) y levanta un estado de alarma de trayectoria, evitando que un lote defectuoso progrese en la planta.
-2.  **Compuertas de Calidad Automáticas (QA Loops):**
-    En las etapas de control de calidad, cuando el laboratorio ingresa los valores de las pruebas físicas (viscosidad, pH), el orquestador los evalúa contra las especificaciones del producto (`CriterioAceptacionEtapa` y `EspecificacionCalidad`):
-    *   **Pasa (Aprobado):** Se dispara automáticamente la transición conectada de aprobación (trigger `"201"`), avanzando el lote a la etapa de envasado.
-    *   **No Pasa (Rechazado):** Se dispara automáticamente la transición de reproceso (trigger `"200"`), retornando el lote al dispersor/mezclador y forzando la acumulación de tiempos y costos de retrabajo.
-
----
-
-## 4. Ingesta de Datos (Excel Parser Inteligente)
-El Parser de plantillas Excel es la puerta de entrada al Modelo de Conocimiento.
-*   **Para V1:** Procesa tiempos estándar y materiales.
-*   **Para V3:** Construye automáticamente el **Grafo de Conectividad** basándose en la tabla de adyacencia de máquinas y los mapas de transferencia cargados por el ingeniero de planta.
-
----
-
-## 5. Ciclo de Mejora Continua: Costos y Eficiencia
-El sistema cierra el ciclo comparando el **Costo Teórico (Excel)** contra el **Costo Real (Captura)**.
-
-1.  **Recolección:** Datos de consumo (energía/insumos) y tiempo hombre.
-2.  **Modelo de Conocimiento:** Gemelo digital con valor económico actualizado.
-3.  **Análisis de Desviaciones:** Alertas de variaciones de costos y desperdicios.
-4.  **Ajuste:** Retroalimentación automática a la Fase 2 para calibrar el próximo plan de producción.
-
----
-
-## 7. Arquitectura de Datos y Ciclos de Eventos (Persistencia)
-
-Para asegurar la resiliencia del sistema (Capacidad FÉNIX), cada cambio de estado se registra en un ciclo de 4 pasos.
-
-### 7.1. Flujo de Captura de Evento
 ```
-1. Orquestador recibe evento (SCADA/Tablet)
-2. Motor de Petri valida precondiciones de la transición.
-3. Se dispara la transición y se actualiza el Token Coloreado.
-4. Persistencia inmediata en base de datos (Atomic Transaction).
+          ENFOQUE CLÁSICO (ISA-95)                      ENFOQUE HOLÓNICO (FÉNIX)
+                 
+               [ Nivel 4: ERP ]                                    ┌──────────────┐
+                      │                                    ┌──────>│ Holón Orden  │<──────┐
+               [ Nivel 3: MES ]                            │       └──────────────┘       │
+                      │                                    ▼                              ▼
+              [ Nivel 2: SCADA ]                   ┌──────────────┐              ┌──────────────┐
+                      │                            │ Holón Recurso│<────────────>│ Holón Producto│
+              [ Nivel 1: PLCs ]                    └──────────────┘              └──────────────┘
+                                                    (Autonomía Edge)              (Conocimiento)
 ```
 
-### 7.2. Handshake entre Redes (Trigger 201)
-Cuando dos máquinas deben intercambiar material, el sistema utiliza un **Mensaje Pendiente** para sincronizarlas:
-*   **Origen:** Red A dispara `t_fin` -> Genera `MensajePendiente`.
-*   **Destino:** Red B recibe `MensajePendiente` -> Habilita `t_inicio`.
-
-### 7.3. Recuperación tras Fallos
-Al reiniciar, el sistema lee la tabla `instancia_red` y reconstruye el marcado de las Redes de Petri y el estado de los Tokens, permitiendo continuar la producción exactamente donde se detuvo.
+### 0.1. El Paradigma de la Unidad Holónica de Producción (HPU)
+En FÉNIX, la fábrica se modela mediante una red de **Holones** cooperativos (inspirados en PROSA y ADACOR):
+* **Holón Recurso (RH):** Representa la entidad física (máquina, línea, operario) junto con su Gemelo Digital, encapsulando su capacidad, tarifas de costo horario, rendimientos ($\gamma$), agenda temporal y su **matriz de conectividad física ($\mathcal{K}$)**.
+* **Holón Producto (PH):** Encapsula el conocimiento de fabricación (recetas BOM, especificaciones de calidad, tolerancias fisicoquímicas e invariantes de proceso).
+* **Holón Orden (OH):** Representa la instancia de demanda en el tiempo ($d = \text{deadline}$, cantidad objetivo $V_{\text{target}}$), encargada de negociar con los recursos para garantizar el cumplimiento de la entrega al mínimo costo.
 
 ---
 
-## 8. Caso de Estudio Técnico: El Ciclo de Retroalimentación
+## 1. Fundamento Matemático: Redes de Petri AB-TPPN
 
-Considerando el caso de **"Pinturas El Fénix"**:
-1.  **Ejecución:** Se capturan eventos de `Dispersor_22` vía Trigger 200.
-2.  **Detección de Desviación:** El orquestador compara el `token.t` (tiempo real) vs el `HolonRuta.tiempo_std`.
-3.  **Cálculo de KPI:** Se genera un `EventoRed` con el delta de tiempo y costo adicional.
-4.  **Ajuste de Modelo:** El sistema de gestión propone la actualización del `Continuant` (Recurso) basándose en la media móvil de los últimos 3 `Perdurants` (Órdenes ejecutadas).
+El núcleo de orquestación y costeo en FÉNIX se formaliza mediante una **Red de Petri Temporizada con Lugares con Costo por Actividad (AB-TPPN - Activity-Based Timed Place Petri Net)**.
+
+### 1.1. Tupla de Definición Formal
+Una red de proceso se define como una tupla:
+$$\mathcal{N} = \langle P, T, F, W, \Omega, C_p, \mathcal{T} \rangle$$
+
+Donde:
+* $P = \{p_1, p_2, \dots, p_n\}$: Conjunto finito de **lugares** (representan estados de ocupación de recursos, buffers o etapas de procesamiento).
+* $T = \{t_1, t_2, \dots, t_m\}$: Conjunto finito de **transiciones** (eventos discretos de inicio/fin de paso, validación de compuertas o trasvases).
+* $F \subseteq (P \times T) \cup (T \times P)$: Arcos dirigidos de flujo de proceso.
+* $W: F \to \mathbb{N}^+$: Matriz de pesos de los arcos.
+* $\Omega: P \to \mathbb{R}^+$: Vector de **duraciones nominales** en lugares ($\tau_i$).
+* $C_p: P \to \mathbb{R}^4$: Vector de **tasas de costeo ABC** asociadas al lugar:
+  $$C_p(p_i) = \langle \kappa_i, \omega_i, \delta_i, \sigma_i \rangle$$
+  * $\kappa_i$: Tasa horaria de energía eléctrica (\$/h).
+  * $\omega_i$: Tasa horaria de mano de obra directa (\$/h).
+  * $\delta_i$: Tasa horaria de amortización / depreciación de equipo (\$/h).
+  * $\sigma_i$: Consumo específico de insumos auxiliares (\$/h).
+* $\mathcal{T}$: Conjunto de tipos de disparo / triggers asociados a las transiciones:
+  * **Trigger 200**: Evento externo manual (operador vía terminal/tablet).
+  * **Trigger 201**: Evento sincronizado inter-redes (mensaje / transferencia de material).
+  * **Trigger None / Auto**: Disparo automático tras cumplirse la temporización del lugar.
+
+### 1.2. El Token Coloreado y la Trazabilidad Dinámica
+El estado de la producción se modela mediante el avance de un **Token Coloreado** $\mathbf{\theta}$, definido por la 4-tupla dinámica:
+$$\mathbf{\theta}(t) = \langle o, m(t), c(t), \tau_{\text{stamp}}(t) \rangle$$
+
+* $o$: Identificador unívoco de la orden de producción.
+* $m(t)$: Masa / volumen actual de producto en el lote, ajustado retroactivamente por los factores de merma de cada estación:
+  $$m_{k} = m_{k-1} \cdot \gamma_k, \quad \text{donde } \gamma_k \in (0, 1]$$
+* $c(t)$: Costo acumulado por el lote hasta el tiempo $t$:
+  $$c(t) = c_{\text{MP}} + \sum_{k \in \text{Ruta}} \Delta c_k$$
+  $$\Delta c_k = (\kappa_k + \omega_k + \delta_k + \sigma_k) \cdot \Delta t_k$$
+* $\tau_{\text{stamp}}(t)$: Vector de marcas de tiempo de entrada/salida para el cálculo de KPIs y variaciones temporales.
+
+---
+
+## 2. Arquitectura del Software e Integración IT/OT
+
+FÉNIX opera en una arquitectura de tres niveles desacoplados, implementada en Python / Flask / SQLAlchemy con una base de datos relacional transaccional (SQLite / PostgreSQL).
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           CAPA DE GESTIÓN (IT / MES)                         │
+│  • Planificador Holónico (Composición Selectiva, B&B, Ruteo en Grafo Físico) │
+│  • Módulo de Cargas Validadas & Semáforo Pre-Producción                     │
+│  • Lazo de Aprendizaje Continuo (EWMA de Tiempos y Degradación EDR)         │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │ Mensajería / Handshake
+┌──────────────────────────────────────▼──────────────────────────────────────┐
+│                        CAPA DE ORQUESTACIÓN (SCADA / EDGE)                  │
+│  • Motor AB-TPPN (motor_abtppn.py): Evolución de Marcados y Disparos        │
+│  • Orquestador Holónico (orquestador.py): Coordinación de Redes e Invariantes │
+│  • Buffer Asíncrono de Mensajes Inter-Redes (Evita pérdida por desalineación)│
+│  • Mecanismo de Resiliencia ante Tracking Error (Exclusión de Lotes)        │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │ Telemetría / Eventos
+┌──────────────────────────────────────▼──────────────────────────────────────┐
+│                           CAPA FÍSICA / OPERATIVA (OT)                       │
+│  • PLCs, Sensores IoT (Temperatura, RPM, Consumo Eléctrico kWh)             │
+│  • Terminal de Operador Web / Tablet (/operador)                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.1. Ontología de Clases y Estructura de Base de Datos
+* **Continuants (Entidades Estáticas / Saber Hacer):**
+  * `Recurso`: Maquinaria y puestos de trabajo con capacidad, mermas y tarifas horarias.
+  * `ConectividadRecurso`: Arcos dirigidos que definen qué máquina puede transferir material a cuál ($R_i \to R_j$).
+  * `Producto` y `Material`: Receta de insumos (BOM) y costo unitario.
+  * `PatronDeRuta` y `EtapaRuta`: Secuencia de servicios maestros requeridos ($s_1 \to s_2 \to \dots \to s_k$).
+  * `InvariantePaso`: Restricciones operativas (ej. $\text{Temperatura} \le 55^\circ\text{C}$).
+* **Perdurants (Entidades Dinámicas / El Hacer):**
+  * `OrdenProduccion`: Demanda activa, cantidades requeridas y estado de ciclo de vida.
+  * `InstanciaRed`: Gemelo digital en memoria/BD de la red de Petri activa (marcado actual, token acumulado).
+  * `EventoRed`: Registro inmutable de cada disparo de transición para auditoría forense y calibración.
+  * `MensajeInterRed`: Buffer de coordinación y transferencia de lote entre etapas.
+
+---
+
+## 3. Protocolos de Orquestación y Sincronización
+
+### 3.1. Sincronización Jerárquica e Inter-Redes (Handshake 201)
+Cuando un proceso de manufactura requiere la interacción entre dos máquinas independientes (ej. Dispersor $R_1$ terminando y trasvasando a Diluidor $R_2$), el intercambio se coordina mediante el protocolo de **Mensajería Asíncrona Bufferizada**:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Operador as Terminal Operador (Tablet)
+    participant RedHija as Red Hija (Dispersor R1)
+    participant Orquestador as Orquestador FÉNIX
+    participant Buffer as Buffer Mensajes (BD)
+    participant RedIntegradora as Red Integradora (Línea)
+    participant RedHija2 as Red Hija 2 (Diluidor R2)
+
+    Operador->>Orquestador: Disparar Transición Fin (t_fin)
+    Orquestador->>RedHija: Ejecutar t_fin (Trigger 200)
+    RedHija->>Orquestador: Emite Mensaje Salida ("Fin_Disp") con trans_id
+    Orquestador->>Buffer: Guardar Mensaje Pendiente (origen=R1, orden=O)
+    Orquestador->>RedIntegradora: Notificar evento "Fin_Disp"
+    
+    alt Transición Habilitada en Red Integradora
+        RedIntegradora->>Orquestador: Dispara Transición Sincronizada (Trigger 201)
+        Orquestador->>Buffer: Marcar mensaje como PROCESADO
+        Orquestador->>RedHija2: Habilitar Inicio de Dilución ("Ini_Dil")
+    else Transición Aún No Habilitada (Red Destino no lista)
+        RedIntegradora-->>Orquestador: Transición deshabilitada por marcado
+        Orquestador->>Buffer: Mantener mensaje en PENDIENTE
+        Note over Orquestador,Buffer: El mensaje espera a que la red evolucione
+    end
+```
+
+### 3.2. Validación de Invariantes y Compuertas de Calidad (QA Loops)
+Antes de ejecutar el disparo de una transición de salida de estación:
+1. **Validación de Invariantes Físicos:** El orquestador evalúa los valores de telemetría reportados ($T^\circ, \text{RPM}$):
+   $$\text{Si } V_{\text{telemetria}} < \text{Limite}_{\min} \quad \text{o} \quad V_{\text{telemetria}} > \text{Limite}_{\max} \implies \text{Bloqueo de Transición y Alarma}$$
+2. **Compuertas de Calidad (QA Gates):**
+   * **Aprobado (Pasa):** Se dispara la transición normal (Trigger `201`), transfiriendo el token a la siguiente etapa.
+   * **Rechazado (No Pasa / Reproceso):** Se dispara la transición de retrabajo (Trigger `200`), retornando el token al inicio del paso y acumulando costos adicionales de energía y operario.
+
+---
+
+## 4. Algoritmo de Planificación Holónica y Cotización
+
+El módulo `PlanificadorProduccion` resuelve el problema de asignación y ruteo óptimo mediante **Composición Selectiva**:
+
+```
+      ORDEN: 1.000 L de Producto P  (Ruta: Dispersión -> Dilución -> Envasado)
+                           │
+      ┌────────────────────┴────────────────────┐
+      ▼                                         ▼
+Opción 1: DISP-A (Rend: 97%)             Opción 2: DISP-B (Rend: 94%)
+      │                                         │
+      ▼ (Grafo Físico K)                        ▼ (Grafo Físico K)
+Tanque DIL-1 (Rend: 99%)                 Tanque DIL-2 (Rend: 98%)
+      │                                         │
+      ▼                                         ▼
+Envasadora ENV-AUTO                      Envasadora ENV-AUTO
+      │                                         │
+Cálculo Retropropagado de Masa:          Cálculo Retropropagado de Masa:
+M_req = 1000 / (0.97 * 0.99) = 1.041 kg   M_req = 1000 / (0.94 * 0.98) = 1.085 kg
+Costo Total ABC: $1.346                  Costo Total ABC: $1.412
+      │                                         │
+      └─────────────────┬───────────────────────┘
+                        ▼
+           SELECCIÓN: Opción 1 (Menor Costo Global)
+```
+
+### 4.1. Formalización de la Absorción de Mermas
+Para una orden de volumen objetivo $V_{\text{target}}$ y una ruta de $K$ recursos seleccionados $\langle R_1, R_2, \dots, R_K \rangle$ con rendimientos respectivos $\gamma_1, \gamma_2, \dots, \gamma_K$:
+$$M_{\text{inicial requerido}} = \frac{V_{\text{target}}}{\prod_{k=1}^{K} \gamma_k}$$
+
+### 4.2. Ruteo Físico en Grafo Dirigido
+FÉNIX implementa una búsqueda de caminos válidos (BFS/DFS) sobre la matriz de adyacencia de planta:
+$$\mathcal{K} = [k_{ij}], \quad k_{ij} = 1 \iff \text{Existe conexión física/tubería entre Recurso } i \text{ y Recurso } j$$
+Si una combinación de máquinas no tiene continuidad física en $\mathcal{K}$, se poda del espacio de soluciones.
+
+---
+
+## 5. Resiliencia Operativa y Lazo de Aprendizaje Continuo
+
+### 5.1. Manejo de Resiliencia ante *Tracking Error* (Pérdida de Eventos)
+En entornos reales de planta, un operario puede omitir el registro de un evento intermedio o un sensor puede perder comunicación.
+* **Diagnóstico:** La red de Petri queda bloqueada en un estado intermedio mientras la red integradora recibe el evento final de la orden.
+* **Mecanismo de Cierre de Resiliencia (`forzar_cierre_por_error_seguimiento`):**
+  1. El orquestador fuerza el cierre ordenado de la red hija.
+  2. Registra el flag `error_seguimiento = True` en la `InstanciaRed`.
+  3. **Aislamiento Estadístico:** En el lazo de aprendizaje, las órdenes marcadas con error de seguimiento son **estrictamente excluidas** de los cálculos estadísticos para evitar distorsionar los tiempos nominales y tarifas reales.
+
+```mermaid
+flowchart TD
+    A[Orden Finalizada en Planta] --> B{¿Completada con Telemetría Íntegra?}
+    B -- Sí (Tracking OK) --> C[Calcular Duraciones y Consumo Real]
+    C --> D[Actualizar Modelo con EWMA]
+    D --> E[Calcular Degradación Energética EDR]
+    B -- No (Tracking Error) --> F[Cierre Resiliente forzado]
+    F --> G[Registrar Alarma de Trazabilidad]
+    G --> H[Excluir de Estadísticas de Aprendizaje]
+    H --> I[Mantener Histórico Intacto]
+```
+
+### 5.2. Calibración Continua con EWMA
+Para los lotes ejecutados íntegramente, los parámetros estándar del modelo se calibran automáticamente mediante una Media Móvil Ponderada Exponencialmente (EWMA):
+$$\hat{\tau}_{\text{nuevo}} = \alpha \cdot \tau_{\text{real}} + (1 - \alpha) \cdot \hat{\tau}_{\text{anterior}}, \quad \alpha \in [0.1, 0.3]$$
+
+### 5.3. Razón de Degradación Energética ($EDR$)
+FÉNIX monitorea el desgaste electromecánico de los equipos evaluando la razón entre el consumo real por unidad de tiempo y el estándar nominal:
+$$EDR = \frac{\text{kWh}_{\text{reales}} / \Delta t_{\text{real}}}{\text{Tarifa}_{\kappa, \text{nominal}}}$$
+* $EDR \approx 1.0$: Equipo operando en condiciones normales.
+* $EDR > 1.15$: Alerta temprana de sobreconsumo / fricción mecánica (mantenimiento predictivo).
+
+---
+
+## 6. Módulo de Cargas Iniciales y Semáforo Pre-Producción
+
+Para blindar la base de datos contra cargas corruptas o incompletas (*Garbage-In, Garbage-Out*), el `ValidadorIntegral` ejecuta 4 fases de validación determinística:
+
+1. **Fase 1 - Integridad Referencial:** Valida existencia de insumos en BOM, servicios mapeados a máquinas y calendarios activos.
+2. **Fase 2 - Conectividad Física de Planta:** Comprueba mediante análisis de alcanzabilidad que para cada producto exista al menos un camino continuo en $\mathcal{K}$.
+3. **Fase 3 - Invariantes y Topología de Redes:** Chequea coherencia de rangos $[\text{mín}, \text{máx}]$ y propiedades de Workflow-Net (un solo $p_{\text{in}}$ y $p_{\text{out}}$).
+4. **Fase 4 - Prueba en Seco (*Dry-Run* Virtual):** Simula la propagación de un token virtual a través de las redes de Petri de cada producto, validando acumuladores de costo y transiciones.
+
+---
+
+## 7. Mapeo de Componentes del Código Fuente
+
+| Módulo / Archivo | Responsabilidad Arquitectónica |
+| :--- | :--- |
+| `fenix/utils/motor_abtppn.py` | Motor matemático de Redes de Petri: lugares temporizados, acumulador de tokens y disparos. |
+| `fenix/servicios/orquestador.py` | Orquestación en tiempo real: buffer de sincronización 201, invariantes y resiliencia. |
+| `fenix/servicios/planificador.py` | Planificación holónica: composición selectiva, absorción de mermas y cotización ABC. |
+| `fenix/validadores/validador_integral.py` | Semáforo pre-producción anti-basura en 4 fases diagnósticas. |
+| `web/routes/cargas_validadas.py` | Controlador web para la auditoría y visualización del semáforo. |
+| `web/routes/planificador.py` | Controlador web del cotizador y optimizador de órdenes. |
+| `web/routes/operador.py` | Terminal de operario para avance manual y captura SCADA. |
+| `web/routes/aprendizaje.py` | Panel de auditoría de calibración EWMA y métricas EDR. |
