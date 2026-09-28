@@ -90,16 +90,23 @@ Para el detalle paso a paso, ve al [Manual de Usuario](Manual_Usuario_MOM.md).
 |--------------------------------------------|-------------|
 | Ingeniero de planta / usuario operativo     | [`Manual_Usuario_MOM.md`](Manual_Usuario_MOM.md) |
 | Desarrollador / integrador técnico          | [`Manual_Tecnico_Final_MOM.md`](Manual_Tecnico_Final_MOM.md) y [`Manual_Tecnico_MOM.md`](Manual_Tecnico_MOM.md) *(ver nota abajo)* |
-| Interesado en los fundamentos y la filosofía del diseño | [`Filosofia_Integracion_Holonica.md`](Filosofia_Integracion_Holonica.md), [`FILOSOFIA.md`](FILOSOFIA.md) |
+| Investigador / Reproducibilidad de datos    | [`fenix/data/benchmark_pintura/`](fenix/data/benchmark_pintura/) y [`ReporteTecnico_MarcoHolonico.md`](ReporteTecnico_MarcoHolonico.md) |
+| Interesado en fundamentos, filosofía e IA   | [`ReporteTecnico_MarcoHolonico.md`](ReporteTecnico_MarcoHolonico.md), [`AgenticAI.md`](AgenticAI.md), [`Filosofia_Integracion_Holonica.md`](Filosofia_Integracion_Holonica.md) |
 | Interesado en las bases científicas         | sección [Publicaciones Científicas](#-publicaciones-científicas) más abajo |
 
 > **Nota:** actualmente hay dos manuales técnicos (`Manual_Tecnico_MOM.md` y `Manual_Tecnico_Final_MOM.md`) con contenido complementario, no uno "borrador" y otro "definitivo". Están pendientes de consolidación — ver ambos por ahora.
 
-Referencia completa de archivos:
+Referencia completa de archivos y directorios:
 
 - [`fenix/`](fenix/): código fuente del motor de ejecución en Python, esquemas de base de datos e interfaces web.
   - [`fenix/servicios/`](fenix/servicios/): orquestador, planificador y validador de condición de recursos.
   - [`fenix/utils/motor_abtppn.py`](fenix/utils/motor_abtppn.py): motor matemático de simulación de Redes de Petri.
+  - [`fenix/data/benchmark_pintura/`](fenix/data/benchmark_pintura/): **Datos empíricos de benchmark y scripts de análisis de telemetría:**
+    - [`dataset_ordenes_indicadores_IJPR.csv`](fenix/data/benchmark_pintura/dataset_ordenes_indicadores_IJPR.csv): Dataset público con 819 órdenes de producción analizadas, rutas de producto y cómputo de indicadores de dispersión temporal ($\text{DIS}$, $\text{DIL}$, $\text{DIS}+\text{DIL}$).
+    - [`analisistrans4.py`](fenix/data/benchmark_pintura/analisistrans4.py), [`archivoSiop.py`](fenix/data/benchmark_pintura/archivoSiop.py), [`diagnostico_pi_pa.py`](fenix/data/benchmark_pintura/diagnostico_pi_pa.py): Scripts para procesamiento estadístico, generación de boxplots, histogramas y calibración histórica.
+    - [`ReporteTecnico_MarcoHolonico.pdf`](fenix/data/benchmark_pintura/ReporteTecnico_MarcoHolonico.pdf): Documento técnico formal en formato PDF con la formulación matemática y validación industrial.
+- [`ReporteTecnico_MarcoHolonico.md`](ReporteTecnico_MarcoHolonico.md): Monografía técnica en español del marco holónico AB-TPPN, orquestación y calibración.
+- [`AgenticAI.md`](AgenticAI.md): Documento de visión y arquitectura sobre la integración de Agentes Inteligentes (Agentic AI) con el sistema holónico.
 - [`Manual_Usuario_MOM.md`](Manual_Usuario_MOM.md): guía de usuario para configuración y operación de planta.
 - [`Manual_Tecnico_Final_MOM.md`](Manual_Tecnico_Final_MOM.md) / [`Manual_Tecnico_MOM.md`](Manual_Tecnico_MOM.md): manuales de arquitectura técnica (diseño de BD, disparadores de eventos, APIs, metodología de modelado).
 - [`Filosofia_Integracion_Holonica.md`](Filosofia_Integracion_Holonica.md): filosofía introductoria de los sistemas holónicos y la transición histórica desde el control jerárquico (contexto del proyecto PDVSA).
