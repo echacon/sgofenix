@@ -129,13 +129,13 @@ Fénix se desarrolla como parte de un proyecto de investigación académica en l
 
 ## 🎓 Citación
 
-Si usas Fénix en tu investigación académica, por favor cita los artículos complementarios:
+Si usas Fénix en tu investigación académica, por favor cita el artículos complementarios:
 
 ```bibtex
 @article{ChaconCardillo2026,
   author  = {Chac{\'o}n, Edgar and Cardillo, Juan},
   title   = {An Activity-Centric Holonic PPR Framework and Petri Net Formalism for Cost-Optimal Scheduling and SCADA-Driven Model Refinement in SMEs},
-  journal = {IJPR},
+  journal = {IEEE Trans. on Industrial Informatics},
   year    = {2026},
   note    = {Under review}
 }

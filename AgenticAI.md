@@ -187,7 +187,7 @@ Este lazo se activa de forma asíncrona cuando un Holón Recurso Inteligente suf
 ## El Algoritmo de Negociación y Reconfiguración (MES-Edge)
 Cuando el agente del recurso actual (DISP_01) detecta que no podrá cumplir con la transición de salida por falla física:
 
-   1. Aislamiento del Token: El agente de DISP_01 detiene el avance del token y calcula el estado actual de la orden: $Token(o, m, c, t_{arr})$.
+   1. Aislamiento del Token: El age nte de DISP_01 detiene el avance del token y calcula el estado actual de la orden: $Token(o, m, c, t_{arr})$.
    2. Evaluación de Alternativas de Ruta (Ontología PPR): El agente consulta el Holón Producto (el archivo YAML/receta) para identificar los recursos alternativos válidos que posean la competencia para la etapa actual o subsecuente.
    3. Llamada a Ofertas Express (CNP): El agente emisor envía un mensaje directo a los agentes de los recursos candidatos (ej. DISP_02 y DISP_03):
    * Mensaje: `"Necesito procesar Orden X, Masa M, requiere entrada a las T. Envíen cotización ABC."*
