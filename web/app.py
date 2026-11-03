@@ -21,6 +21,7 @@ from routes.operador import operador_bp
 from routes.cargas_validadas import cargas_validadas_bp
 from routes.planificador import planificador_bp
 from routes.aprendizaje import aprendizaje_bp
+from routes.mes import mes_bp
 
 # Modelos y servicios del núcleo FÉNIX
 from modelos.DocumentosNegocio import OrdenProduccion
@@ -65,6 +66,7 @@ app.register_blueprint(operador_bp)
 app.register_blueprint(cargas_validadas_bp)
 app.register_blueprint(planificador_bp)
 app.register_blueprint(aprendizaje_bp)
+app.register_blueprint(mes_bp)
 
 # ==================== RUTAS PRINCIPALES ====================
 @app.route('/')

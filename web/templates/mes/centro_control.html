@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block title %}Centro de Control Ejecutivo MES - FÉNIX{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <!-- Encabezado Ejecutivo MES -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-speedometer2 text-primary me-2"></i>Centro de Control Ejecutivo MES & Orquestación Holónica
+            </h2>
+            <p class="text-muted mb-0">
+                Supervisión en tiempo real de Holones de Recurso ($\text{RH}$), Redes de Petri $\mathcal{N}_E \parallel \mathcal{N}_S$, Token Coloreado $\tau=(o,m,c_{\text{acc}},t)$ e Ingesta Híbrida (Modos A, B y C).
+            </p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <button class="btn btn-outline-primary btn-sm" onclick="cargarResumenMES()">
+                <i class="bi bi-arrow-clockwise me-1"></i> Actualizar Estado
+            </button>
+            <a href="/planificador" class="btn btn-primary btn-sm">
+                <i class="bi bi-diagram-3 me-1"></i> Nueva Cotización / Orden ABC
+            </a>
+        </div>
+    </div>
+
+    <!-- Tarjetas KPI Superiores -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-primary border-4">
+                <div class="card-body py-3">
+                    <div class="text-muted small text-uppercase fw-bold">Semáforo Pre-Producción</div>
+                    <div class="d-flex align-items-center justify-content-between mt-1">
+                        <h4 id="kpiSemaforo" class="fw-bold mb-0">CARGANDO...</h4>
+                        <i class="bi bi-shield-check fs-3 text-primary"></i>
+                    </div>
+                    <small id="kpiPasosCarga" class="text-muted">Ruta de carga en 6 pasos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-success border-4">
+                <div class="card-body py-3">
+                    <div class="text-muted small text-uppercase fw-bold">Holones de Recurso (RH)</div>
+                    <div class="d-flex align-items-center justify-content-between mt-1">
+                        <h4 id="kpiRecursos" class="fw-bold mb-0">0</h4>
+                        <i class="bi bi-cpu fs-3 text-success"></i>
+                    </div>
+                    <small id="kpiModosResumen" class="text-muted">Coexistencia Modos A / B / C</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-info border-4">
+                <div class="card-body py-3">
+                    <div class="text-muted small text-uppercase fw-bold">Órdenes Monitoreadas</div>
+                    <div class="d-flex align-items-center justify-content-between mt-1">
+                        <h4 id="kpiOrdenes" class="fw-bold mb-0">0</h4>
+                        <i class="bi bi-boxes fs-3 text-info"></i>
+                    </div>
+                    <small id="kpiOrdenesActivas" class="text-muted">Sincronización $\mathcal{N}_E \leftrightarrow \mathcal{N}_S$</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 border-start border-warning border-4">
+                <div class="card-body py-3">
+                    <div class="text-muted small text-uppercase fw-bold">Salud Energética (EDR)</div>
+                    <div class="d-flex align-items-center justify-content-between mt-1">
+                        <h4 id="kpiEDR" class="fw-bold mb-0">1.000</h4>
+                        <i class="bi bi-lightning-charge fs-3 text-warning"></i>
+                    </div>
+                    <small class="text-muted">$\text{EDR}(R) = \bar{e}_{\text{EWMA}} / e_{\text{nom}}$ (Ec. 15)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. Ruta de Carga Canónica en 6 Pasos -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title fw-bold mb-0">
+                    <i class="bi bi-signpost-split text-primary me-2"></i>Ruta de Carga Canónica en 6 Pasos ("Primero el saber hacer, después la tecnología")
+                </h5>
+            </div>
+            <a href="/cargas/validar" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-upload me-1"></i> Ir al Validador YAML
+            </a>
+        </div>
+        <div class="card-body">
+            <div id="contenedorRutaCarga" class="row g-2">
+                <!-- Renderizado dinámico JS -->
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- 2. Monitor en Vivo de Órdenes, Redes AB-TPPN y Token Coloreado -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title fw-bold mb-0">
+                        <i class="bi bi-diagram-2 text-primary me-2"></i>Órdenes, Redes AB-TPPN ($\mathcal{N}_E \parallel \mathcal{N}_S$) y Token Coloreado $\tau = (o, m, c_{\text{acc}}, t)$
+                    </h5>
+                </div>
+                <div class="card-body" id="contenedorOrdenesMES">
+                    <!-- Renderizado dinámico JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Consola Interactiva de Ingesta Híbrida (Modos A, B y C) -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="card-title fw-bold mb-0">
+                        <i class="bi bi-broadcast-pin text-warning me-2"></i>Pasarela Unificada de Piso de Planta (Modos A, B y C)
+                    </h5>
+                    <small class="text-light opacity-75">Endpoint unificado: <code>POST /api/ingesta/evento_planta</code></small>
+                </div>
+                <div class="card-body">
+                    <form id="formIngestaPlanta" onsubmit="enviarEventoUnificado(event)">
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Orden de Producción</label>
+                                <select id="ingestaOrdenSelect" class="form-select form-select-sm" required>
+                                    <option value="">Seleccione orden...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Modalidad Tecnológica de Captura</label>
+                                <select id="ingestaModoSelect" class="form-select form-select-sm" onchange="ajustarCamposModo()">
+                                    <option value="A_OPERADOR">Modo A · Operador (Tablet / Sin sensores)</option>
+                                    <option value="B_SCADA">Modo B · SCADA / PLC Existente (Tags)</option>
+                                    <option value="C_EDGE" selected>Modo C · Edge Bajo Coste (Arduino + RPi)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Holón Recurso (Estación)</label>
+                                <select id="ingestaRecursoSelect" class="form-select form-select-sm">
+                                    <option value="">(Inferir automáticamente)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Código Evento / Transición (Serie 200)</label>
+                                <input type="text" id="ingestaEventoInput" class="form-control form-control-sm" value="201" placeholder="Ej. 201, 202, t_fin_mezcla" required>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded bg-light border mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span id="badgeModoExplicacion" class="badge bg-success">Modo C · Nodo Arduino SCT-013 + DS18B20 + Raspberry Pi</span>
+                                <small class="text-muted">Telemetría e Invariantes</small>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">Energía Lote ($\text{kWh}$)</label>
+                                    <input type="number" id="ingestaKwhInput" class="form-control form-control-sm" step="any" placeholder="Ej. 14.5">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">Temperatura ($^\circ\text{C}$)</label>
+                                    <input type="number" id="ingestaTempInput" class="form-control form-control-sm" step="any" placeholder="Ej. 65.0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">Merma Medida ($\text{kg}$)</label>
+                                    <input type="number" id="ingestaMermaInput" class="form-control form-control-sm" step="any" placeholder="Opcional">
+                                </div>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="ingestaForzarCheck">
+                                <label class="form-check-label small text-muted" for="ingestaForzarCheck">
+                                    Autorización de Supervisor (<code>forzar=true</code> ante desviación de invariante físico)
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-warning w-100 fw-bold btn-sm py-2">
+                            <i class="bi bi-send-check-fill me-1"></i> Inyectar Evento a la Red de Petri AB-TPPN
+                        </button>
+                    </form>
+
+                    <div id="alertaResultadoIngesta" class="alert d-none mt-3 mb-0 small py-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Mapa de Holones de Recurso, Vector ABC y Monitoreo Energético EDR -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3">
+            <h5 class="card-title fw-bold mb-0">
+                <i class="bi bi-hdd-rack text-primary me-2"></i>Estado de los Holones de Recurso ($\text{RH}$), Tasas Horarias ABC ($\Phi_R$) y Condición Energética ($\text{EDR}$)
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th>Código / Holón Recurso</th>
+                        <th>Modalidad de Piso (A/B/C)</th>
+                        <th>Estado Operativo</th>
+                        <th class="text-end">Rendimiento $\gamma_R$</th>
+                        <th class="text-end">$\kappa^{\text{eff}}_R$ (Energía)</th>
+                        <th class="text-end">$\omega_R$ (Labor)</th>
+                        <th class="text-end">$\delta_R$ (Deprec.)</th>
+                        <th class="text-end">$\mu_R$ (Overhead)</th>
+                        <th class="text-end">Tasa Total ABC ($/h)</th>
+                        <th class="text-center">Condición $\text{EDR}(R)$</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaRecursosMESBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 5. Bitácora en Vivo de Eventos de Planta (Trazabilidad Híbrida A/B/C) -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="card-title fw-bold mb-0">
+                <i class="bi bi-journal-code text-primary me-2"></i>Bitácora de Eventos Disparados y Evolución Contable del Token
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th>Hora</th>
+                        <th>Orden</th>
+                        <th>Transición / Evento</th>
+                        <th>Fuente de Captura</th>
+                        <th class="text-end">Masa $m$ (kg)</th>
+                        <th class="text-end">Costo Paso ($)</th>
+                        <th class="text-end">Costo Acum. $c_{\text{acc}}$ ($)</th>
+                        <th>Telemetría / Invariantes Registrados</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaEventosMESBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function ajustarCamposModo() {
+    const modo = document.getElementById('ingestaModoSelect').value;
+    const badge = document.getElementById('badgeModoExplicacion');
+    if (modo === 'A_OPERADOR') {
+        badge.className = 'badge bg-secondary';
+        badge.innerText = 'Modo A · Operador en Tablet (Human-in-the-Loop)';
+    } else if (modo === 'B_SCADA') {
+        badge.className = 'badge bg-info text-dark';
+        badge.innerText = 'Modo B · Conector SCADA / PLC Existente';
+    } else {
+        badge.className = 'badge bg-success';
+        badge.innerText = 'Modo C · Nodo Arduino SCT-013 + DS18B20 + Raspberry Pi';
+    }
+}
+
+async function cargarResumenMES() {
+    try {
+        const resp = await fetch('/mes/api/resumen');
+        const data = await resp.json();
+        if (!data.success) return;
+
+        // 1. KPIs
+        const elSem = document.getElementById('kpiSemaforo');
+        elSem.innerText = data.semaforo_global;
+        elSem.className = 'fw-bold mb-0 ' + (
+            data.semaforo_global === 'VERDE' ? 'text-success' :
+            (data.semaforo_global === 'AMARILLO' ? 'text-warning' : 'text-danger')
+        );
+
+        const pasosCompletos = data.ruta_carga.filter(p => p.completado).length;
+        document.getElementById('kpiPasosCarga').innerText = `${pasosCompletos}/6 pasos de carga completados`;
+
+        const equipos = data.recursos.filter(r => r.tipo === 'equipo');
+        document.getElementById('kpiRecursos').innerText = `${equipos.length} Equipos (${data.recursos.length} total)`;
+
+        const nA = equipos.filter(r => r.modo_captura.codigo === 'A_OPERADOR').length;
+        const nB = equipos.filter(r => r.modo_captura.codigo === 'B_SCADA').length;
+        const nC = equipos.filter(r => r.modo_captura.codigo === 'C_EDGE').length;
+        document.getElementById('kpiModosResumen').innerText = `Modo A: ${nA} · Modo B: ${nB} · Modo C: ${nC}`;
+
+        const ordenesActivas = data.ordenes.filter(o => o.estado === 'en_proceso' || o.estado === 'en_produccion');
+        document.getElementById('kpiOrdenes').innerText = `${ordenesActivas.length} en curso / ${data.ordenes.length} total`;
+
+        const edrMax = equipos.reduce((acc, r) => Math.max(acc, r.edr_actual || 1.0), 1.0);
+        document.getElementById('kpiEDR').innerText = `Máx EDR: ${edrMax.toFixed(3)}`;
+
+        // 2. Renderizar Ruta de Carga en 6 Pasos
+        const contRuta = document.getElementById('contenedorRutaCarga');
+        contRuta.innerHTML = data.ruta_carga.map(p => `
+            <div class="col-md-2">
+                <div class="p-2 border rounded h-100 ${p.completado ? 'bg-success-subtle border-success' : 'bg-light'}">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="badge ${p.completado ? 'bg-success' : 'bg-secondary'}">Paso ${p.paso}</span>
+                        <i class="bi ${p.completado ? 'bi-check-circle-fill text-success' : 'bi-Dash-circle text-muted'}"></i>
+                    </div>
+                    <div class="fw-bold small">${p.titulo}</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">${p.detalle}</div>
+                </div>
+            </div>
+        `).join('');
+
+        // 3. Renderizar Órdenes e Instancias de Red
+        const contOrd = document.getElementById('contenedorOrdenesMES');
+        const selOrden = document.getElementById('ingestaOrdenSelect');
+        const valorPrevioOrden = selOrden.value;
+
+        selOrden.innerHTML = '<option value="">Seleccione orden...</option>' + data.ordenes.map(o =>
+            `<option value="${o.id}">#${o.id} · ${o.numero_orden} (${o.producto_nombre} - ${o.estado})</option>`
+        ).join('');
+        if (valorPrevioOrden) selOrden.value = valorPrevioOrden;
+        else if ( data.ordenes.length > 0 ) selOrden.value = data.ordenes[0].id;
+
+        if (data.ordenes.length === 0) {
+            contOrd.innerHTML = '<div class="text-center text-muted py-4">No hay órdenes registradas. Cree una desde el Planificador ABC.</div>';
+        } else {
+            contOrd.innerHTML = data.ordenes.slice(0, 5).map(o => {
+                const badgeEstado = (o.estado === 'completada') ? 'bg-success' :
+                                    (o.estado === 'en_proceso' || o.estado === 'en_produccion') ? 'bg-primary' : 'bg-warning text-dark';
+                const btnIniciar = (o.estado === 'pendiente' || o.estado === 'planificada')
+                    ? `<button class="btn btn-sm btn-success" onclick="iniciarOrdenMES(${o.id})"><i class="bi bi-play-fill"></i> Iniciar Redes AB-TPPN</button>`
+                    : '';
+
+                const instHtml = o.instancias.map(inst => {
+                    const lugaresBadges = inst.lugares_activos.length > 0
+                        ? inst.lugares_activos.map(l => `<span class="badge bg-dark me-1"><i class="bi bi-record-circle-fill text-warning me-1"></i>${l.id}: ${l.nombre}</span>`).join('')
+                        : `<span class="text-muted small">Completada (${inst.tipo_terminacion || 'normal'})</span>`;
+                    return `
+                        <div class="small py-1 border-top d-flex justify-content-between align-items-center flex-wrap">
+                            <div>
+                                <span class="fw-bold text-secondary">${inst.rol_red}</span>
+                                <code class="ms-1">${inst.red_nombre}</code>
+                            </div>
+                            <div>${lugaresBadges}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="border rounded p-3 mb-3 shadow-xs">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap mb-2">
+                            <div>
+                                <span class="badge ${badgeEstado} text-uppercase me-1">${o.estado}</span>
+                                <strong>#${o.id} · ${o.numero_orden}</strong> — ${o.producto_nombre}
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                ${btnIniciar}
+                                <span class="badge bg-light text-dark border">Masa $m$: <strong>${o.token.m.toFixed(2)} kg</strong></span>
+                                <span class="badge bg-primary-subtle text-primary border">Costo $c_{\\text{acc}}$: <strong>$${o.token.c_acc.toFixed(2)}</strong></span>
+                                <span class="badge bg-success-subtle text-success border">Unitario $u$: <strong>$${o.token.u.toFixed(4)}/kg</strong></span>
+                            </div>
+                        </div>
+                        ${instHtml || '<div class="small text-muted">Redes AB-TPPN pendientes de instanciación.</div>'}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 4. Renderizar Tabla de Recursos
+        const selRec = document.getElementById('ingestaRecursoSelect');
+        const valPrevRec = selRec.value;
+        selRec.innerHTML = '<option value="">(Inferir automáticamente según etapa)</option>' + equipos.map(r =>
+            `<option value="${r.nombre}">${r.codigo} - ${r.nombre} [${r.modo_captura.codigo}]</option>`
+        ).join('');
+        if (valPrevRec) selRec.value = valPrevRec;
+
+        const tbodyRec = document.getElementById('tablaRecursosMESBody');
+        tbodyRec.innerHTML = data.recursos.map(r => {
+            const badgeSalud = r.salud_energetica === 'OPTIMO' ? 'bg-success' :
+                               (r.salud_energetica === 'ADVERTENCIA' ? 'bg-warning text-dark' :
+                               (r.salud_energetica === 'DEGRADADO' ? 'bg-danger' : 'bg-secondary'));
+            return `
+                <tr>
+                    <td>
+                        <div class="fw-bold">${r.nombre}</div>
+                        <small class="text-muted">${r.codigo} · ${r.modelo}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-${r.modo_captura.badge}">
+                            <i class="bi ${r.modo_captura.icono} me-1"></i>${r.modo_captura.etiqueta}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${r.ocupado_por_orden ? 'bg-primary' : (r.disponible ? 'bg-success-subtle text-success' : 'bg-danger')}">
+                            ${r.estado_operativo}
+                        </span>
+                    </td>
+                    <td class="text-end">${(r.gamma * 100).toFixed(1)}%</td>
+                    <td class="text-end">$${r.kappa_eff_h.toFixed(2)}/h</td>
+                    <td class="text-end">$${r.omega_h.toFixed(2)}/h</td>
+                    <td class="text-end">$${r.delta_h.toFixed(2)}/h</td>
+                    <td class="text-end">$${r.mu_h.toFixed(2)}/h</td>
+                    <td class="text-end fw-bold text-primary">$${r.tasa_total_abc_h.toFixed(2)}/h</td>
+                    <td class="text-center">
+                        <span class="badge ${badgeSalud}">EDR: ${r.edr_actual.toFixed(3)}</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        // 5. Bitácora de Eventos
+        const tbodyEv = document.getElementById('tablaEventosMESBody');
+        if (data.eventos_recientes.length === 0) {
+            tbodyEv.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Sin eventos registrados aún.</td></tr>';
+        } else {
+            tbodyEv.innerHTML = data.eventos_recientes.map(ev => {
+                const badgeModo = ev.modo_captura === 'C_EDGE' ? 'bg-success' :
+                                  (ev.modo_captura === 'B_SCADA' ? 'bg-info text-dark' : 'bg-secondary');
+                return `
+                    <tr>
+                        <td><code>${ev.timestamp}</code></td>
+                        <td><strong>#${ev.orden_id}</strong></td>
+                        <td><span class="fw-bold">${ev.transicion}</span></td>
+                        <td><span class="badge ${badgeModo}">${ev.modo_captura}</span></td>
+                        <td class="text-end">${ev.token_m.toFixed(2)} kg</td>
+                        <td class="text-end text-success">+$${ev.costo_paso.toFixed(2)}</td>
+                        <td class="text-end fw-bold text-primary">$${ev.token_c.toFixed(2)}</td>
+                        <td><code class="small text-muted">${JSON.stringify(ev.mediciones)}</code></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    } catch (err) {
+        console.error('Error cargando resumen MES:', err);
+    }
+}
+
+async function iniciarOrdenMES(ordenId) {
+    try {
+        const resp = await fetch(`/mes/api/orden/${ordenId}/iniciar`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+            await cargarResumenMES();
+        } else {
+            alert('Error al iniciar orden: ' + data.error);
+        }
+    } catch (err) {
+        alert('Error: ' + err);
+    }
+}
+
+async function enviarEventoUnificado(e) {
+    e.preventDefault();
+    const alerta = document.getElementById('alertaResultadoIngesta');
+    alerta.className = 'alert d-none mt-3 mb-0 small py-2';
+
+    const mediciones = {};
+    const kwhVal = document.getElementById('ingestaKwhInput').value;
+    const tempVal = document.getElementById('ingestaTempInput').value;
+    const mermaVal = document.getElementById('ingestaMermaInput').value;
+
+    if (kwhVal !== '') mediciones.kwh_consumidos = parseFloat(kwhVal);
+    if (tempVal !== '') mediciones.temperatura_c = parseFloat(tempVal);
+    if (mermaVal !== '') mediciones.merma_kg = parseFloat(mermaVal);
+
+    const payload = {
+        orden_id: parseInt(document.getElementById('ingestaOrdenSelect').value),
+        modo_captura: document.getElementById('ingestaModoSelect').value,
+        recurso: document.getElementById('ingestaRecursoSelect').value || null,
+        evento: document.getElementById('ingestaEventoInput').value.trim(),
+        mediciones: mediciones,
+        forzar: document.getElementById('ingestaForzarCheck').checked
+    };
+
+    try {
+        const resp = await fetch('/api/ingesta/evento_planta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+
+        alerta.classList.remove('d-none');
+        if (data.success) {
+            alerta.classList.add('alert-success');
+            alerta.innerHTML = `<strong>✅ ${data.mensaje}</strong><br>Token actualizado: $m = ${data.token.m}$ kg · $c_{\\text{acc}} = \\$${data.token.c_acc}$ · $u = \\$${data.token.u}$/kg`;
+            await cargarResumenMES();
+        } else {
+            alerta.classList.add(data.bloqueo_invariante ? 'alert-danger' : 'alert-warning');
+            alerta.innerHTML = `<strong>⚠️ ${data.mensaje || data.error}</strong>`;
+        }
+    } catch (err) {
+        alerta.classList.remove('d-none');
+        alerta.classList.add('alert-danger');
+        alerta.innerText = 'Error de comunicación: ' + err;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    ajustarCamposModo();
+    cargarResumenMES();
+});
+</script>
+{% endblock %}

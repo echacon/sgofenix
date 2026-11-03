@@ -124,7 +124,7 @@ class ValidadorIntegralPlanta:
         """Carga y consolida el estado maestro de la planta directamente desde la BD."""
         try:
             from modelos.Recursos import Recurso, ConexionFisica
-            from modelos.Producto import Producto, HolonRuta, Formula, InsumoFormula
+            from modelos.Producto import Producto, HolonRuta, Formula, InsumoFormula, AsignacionRecurso
             from modelos.Taxonomia import EtapaRuta, TipoDeOperacion
 
             # 1. Cargar Recursos
@@ -137,6 +137,14 @@ class ValidadorIntegralPlanta:
                         servicios.append(so.servicio_tecnico.codigo or so.servicio_tecnico.nombre)
                     elif hasattr(so, 'servicio') and so.servicio:
                         servicios.append(so.servicio.codigo or so.servicio.nombre)
+
+                # Inferir servicios también desde AsignacionRecurso configuradas en rutas
+                asigs_rec = session.query(AsignacionRecurso).filter_by(recurso_id=r.id).all()
+                for ar in asigs_rec:
+                    if ar.etapa and ar.etapa.tipoDeOperacion:
+                        cod_op = ar.etapa.tipoDeOperacion.codigo or ar.etapa.tipoDeOperacion.nombre
+                        if cod_op and cod_op not in servicios:
+                            servicios.append(cod_op)
                 
                 # Heurística si no hay servicios técnicos explícitos
                 if not servicios:

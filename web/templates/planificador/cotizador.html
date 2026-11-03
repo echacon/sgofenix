@@ -7,8 +7,10 @@
     <!-- Encabezado -->
     <div class="row mb-4">
         <div class="col-12">
-            <h2 class="fw-bold mb-1"><i class="bi bi-diagram-3 text-primary me-2"></i>Planificador Holónico y Cotización Dinámica ABC</h2>
-            <p class="text-muted mb-0">Optimización de rutas en grafo, composición selectiva, balance de masa con absorción de mermas y viabilidad económica.</p>
+            <h2 class="fw-bold mb-1"><i class="bi bi-diagram-3 text-primary me-2"></i>Planificador Holónico y Cotización Dinámica ABC (Algoritmo 1)</h2>
+            <p class="text-muted mb-0">
+                Poda en dos etapas y Branch-and-Bound con cota inferior admisible $LB(\nu)$, retropropagación exacta de mermas ($m_0 = q_n / \prod \gamma_k$, Ec. 9) y factibilidad temporal en agendas $\Psi_R$.
+            </p>
         </div>
     </div>
 
@@ -17,12 +19,12 @@
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white py-3">
-                    <h5 class="card-title fw-bold mb-0"><i class="bi bi-sliders me-2 text-primary"></i>Parámetros de Producción</h5>
+                    <h5 class="card-title fw-bold mb-0"><i class="bi bi-sliders me-2 text-primary"></i>Parámetros de la Orden $\langle p, q_n, d, V_{\text{target}} \rangle$</h5>
                 </div>
                 <div class="card-body">
                     <form id="formCotizar" onsubmit="ejecutarCotizacion(event)">
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Producto a Fabricar</label>
+                            <label class="form-label fw-bold">Producto a Fabricar ($p$)</label>
                             <select id="productoSelect" class="form-select" required>
                                 <option value="" disabled selected>Seleccione un producto...</option>
                                 {% for prod in productos %}
@@ -32,8 +34,29 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Tamaño del Lote (kg / L)</label>
-                            <input type="number" id="cantidadInput" class="form-control" value="1000" min="1" step="any" required>
+                            <label class="form-label fw-bold">Cantidad Meta Requerida $q_n$ (kg / L)</label>
+                            <input type="number" id="cantidadInput" class="form-control" value="500" min="1" step="any" required>
+                        </div>
+
+                        <div class="mb-3 form-check bg-light p-2 rounded border ps-4">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" id="retropropagarMermaCheck" checked>
+                            <label class="form-check-label small fw-bold" for="retropropagarMermaCheck">
+                                Retropropagar mermas ($m_0 = q_n / \prod \gamma_k$, Proposición 1)
+                            </label>
+                            <div class="form-text small mt-0">
+                                Garantiza que la masa neta entregada al cliente final sea exactamente $q_n$.
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Cota Unitaria $V_{\text{target}}$ ($/kg)</label>
+                                <input type="number" id="vTargetInput" class="form-control" placeholder="Ej. 15.00" step="any">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Plazo Máximo $d$ (min)</label>
+                                <input type="number" id="deadlineMinInput" class="form-control" placeholder="Ej. 480" step="any">
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -48,18 +71,12 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Cota Máxima de Viabilidad $V_{\text{target}}$ ($)</label>
-                            <input type="number" id="vTargetInput" class="form-control" placeholder="Opcional (Ej. 15000)" step="any">
-                            <div class="form-text small">Descarta rutas cuyo costo total acumulado supere esta cota.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Plazo de Entrega</label>
+                            <label class="form-label fw-bold">Fecha de Compromiso Comercial</label>
                             <input type="datetime-local" id="plazoEntregaInput" class="form-control">
                         </div>
 
                         <button type="submit" id="btnCotizar" class="btn btn-primary w-100 py-2 fw-bold">
-                            <i class="bi bi-calculator me-1"></i> Optimizar y Cotizar Ruta
+                            <i class="bi bi-calculator me-1"></i> Ejecutar Algoritmo 1 (Branch & Bound)
                         </button>
                     </form>
                 </div>
@@ -74,21 +91,21 @@
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center flex-wrap">
                             <div>
-                                <span class="badge bg-primary-subtle text-primary mb-1">Ruta Óptima Seleccionada</span>
+                                <span class="badge bg-primary-subtle text-primary mb-1">Asignación Óptima Factible $\mathcal{A}^*$</span>
                                 <h4 id="resNombreRuta" class="fw-bold mb-1">Ruta Estándar</h4>
-                                <p class="text-muted small mb-0">Balance de masa completado y viable económicamente.</p>
+                                <p id="resBalanceMasico" class="text-muted small mb-0"></p>
                             </div>
                             <div class="d-flex gap-4 mt-3 mt-md-0">
                                 <div class="text-end">
-                                    <div class="text-muted small text-uppercase">Costo Total ABC</div>
+                                    <div class="text-muted small text-uppercase">Costo Total $c_{\text{acc},K}$</div>
                                     <h3 id="resCostoTotal" class="fw-bold text-success mb-0">$0.00</h3>
                                 </div>
                                 <div class="text-end">
-                                    <div class="text-muted small text-uppercase">Costo Unitario ($/kg)</div>
+                                    <div class="text-muted small text-uppercase">Costo Unitario $u_K$ ($/kg)</div>
                                     <h3 id="resCostoUnitario" class="fw-bold text-dark mb-0">$0.00</h3>
                                 </div>
                                 <div class="text-end">
-                                    <div class="text-muted small text-uppercase">Tiempo Estimado</div>
+                                    <div class="text-muted small text-uppercase">Makespan $\text{EFT}_K$</div>
                                     <h3 id="resTiempoTotal" class="fw-bold text-primary mb-0">0 min</h3>
                                 </div>
                             </div>
@@ -99,20 +116,21 @@
                 <!-- Tabla de Etapas y Costeo Paso a Paso -->
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-header bg-white py-3">
-                        <h5 class="card-title fw-bold mb-0"><i class="bi bi-table me-2 text-primary"></i>Desglose Holónico por Etapa del Proceso</h5>
+                        <h5 class="card-title fw-bold mb-0"><i class="bi bi-table me-2 text-primary"></i>Desglose Holónico por Etapa: Balance Másico, Ventana $[\text{EST}_k, \text{EFT}_k]$ y Costeo ABC</h5>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light small text-uppercase">
                                 <tr>
                                     <th>Etapa</th>
-                                    <th>Recurso Asignado</th>
-                                    <th class="text-end">Duración</th>
-                                    <th class="text-end">Materia Prima</th>
-                                    <th class="text-end">Procesamiento (ABC)</th>
+                                    <th>Holón Recurso</th>
+                                    <th class="text-end">Ventana $[\text{EST}, \text{EFT}]$</th>
+                                    <th class="text-end">Masa $m_{\text{in}} \to m_{\text{out}}$</th>
+                                    <th class="text-end">Insumos</th>
+                                    <th class="text-end">ABC ($\Phi_R$)</th>
                                     <th class="text-end">Trasvase</th>
                                     <th class="text-end">Costo Acum.</th>
-                                    <th class="text-end">Costo Unitario</th>
+                                    <th class="text-end">Unitario ($/kg)</th>
                                 </tr>
                             </thead>
                             <tbody id="tablaEtapasBody">
@@ -122,10 +140,14 @@
                 </div>
 
                 <!-- Botón de Lanzamiento de Orden -->
-                <div class="card shadow-sm border-0 bg-light p-3 text-end">
-                    <div>
+                <div class="card shadow-sm border-0 bg-light p-3 d-flex flex-row justify-content-between align-items-center">
+                    <div class="small text-muted">
+                        <i class="bi bi-calendar-check me-1 text-primary"></i>
+                        Al confirmar, se reservarán los intervalos $[\text{EST}_k, \text{EFT}_k]$ en la agenda $\Psi_R$ de cada recurso.
+                    </div>
+                    <div class="d-flex gap-2">
                         <button class="btn btn-success px-4 py-2 fw-bold" onclick="crearOrdenPlanificada()">
-                            <i class="bi bi-play-circle-fill me-1"></i> Confirmar y Lanzar Orden a Planta
+                            <i class="bi bi-play-circle-fill me-1"></i> Confirmar y Lanzar Orden a Planta / MES
                         </button>
                     </div>
                 </div>
@@ -134,8 +156,8 @@
             <!-- Estado Vacío Inicial -->
             <div id="panelVacio" class="card shadow-sm border-0 p-5 text-center text-muted">
                 <i class="bi bi-cpu fs-1 d-block mb-3 text-secondary"></i>
-                <h5 class="fw-bold">Seleccione los parámetros y presione "Optimizar y Cotizar Ruta"</h5>
-                <p class="small text-muted mb-0">El algoritmo evaluará el grafo de planta físico, tiempos de trasvase y tasas horarias ABC en tiempo real.</p>
+                <h5 class="fw-bold">Seleccione los parámetros y presione "Ejecutar Algoritmo 1 (Branch & Bound)"</h5>
+                <p class="small text-muted mb-0">El planificador evaluará conectividad física $\mathcal{K}$, agendas $\Psi_R$, retropropagación de mermas y tasas horarias ABC ajustadas por $\text{EDR}$.</p>
             </div>
         </div>
     </div>
@@ -148,15 +170,17 @@ async function ejecutarCotizacion(e) {
     e.preventDefault();
     const btn = document.getElementById('btnCotizar');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Optimizando...';
-    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Ejecutando Branch & Bound...';
+
     const payload = {
         producto_id: parseInt(document.getElementById('productoSelect').value),
         cantidad: parseFloat(document.getElementById('cantidadInput').value),
         prioridad: parseInt(document.getElementById('prioridadSelect').value),
-        v_target: document.getElementById('vTargetInput').value ? parseFloat(document.getElementById('vTargetInput').value) : null
+        v_target: document.getElementById('vTargetInput').value ? parseFloat(document.getElementById('vTargetInput').value) : null,
+        deadline_min: document.getElementById('deadlineMinInput').value ? parseFloat(document.getElementById('deadlineMinInput').value) : null,
+        retropropagar_merma: document.getElementById('retropropagarMermaCheck').checked
     };
-    
+
     try {
         const resp = await fetch('/planificador/api/cotizar', {
             method: 'POST',
@@ -164,39 +188,49 @@ async function ejecutarCotizacion(e) {
             body: JSON.stringify(payload)
         });
         const data = await resp.json();
-        
+
         if (data.success) {
             planCalculadoActual = data.plan;
             renderizarResultados(data.plan);
         } else {
-            alert('Error en planificación: ' + data.error);
+            alert('Poda / Inviabilidad detectada: ' + data.error);
         }
     } catch (err) {
         alert('Error conectando al servidor: ' + err);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-calculator me-1"></i> Optimizar y Cotizar Ruta';
+        btn.innerHTML = '<i class="bi bi-calculator me-1"></i> Ejecutar Algoritmo 1 (Branch & Bound)';
     }
 }
 
 function renderizarResultados(plan) {
     document.getElementById('panelVacio').classList.add('d-none');
     document.getElementById('panelResultados').classList.remove('d-none');
-    
+
     document.getElementById('resNombreRuta').innerText = plan.holon_ruta_nombre;
     document.getElementById('resCostoTotal').innerText = `$${plan.costo_total.toFixed(2)}`;
     document.getElementById('resCostoUnitario').innerText = `$${plan.costo_unitario.toFixed(4)}`;
-    document.getElementById('resTiempoTotal').innerText = `${plan.duracion_total_min.toFixed(0)} min`;
-    
+    document.getElementById('resTiempoTotal').innerText = `${plan.duracion_total_min.toFixed(1)} min`;
+
+    const m0 = plan.masa_inicial_kg !== undefined ? plan.masa_inicial_kg : 0;
+    const mK = plan.masa_final_kg !== undefined ? plan.masa_final_kg : 0;
+    document.getElementById('resBalanceMasico').innerHTML =
+        `Masa inicial de entrada $m_0 = <strong>${m0.toFixed(2)} kg</strong> &rarr; Rendimiento neto final $m_K = <strong>${mK.toFixed(2)} kg</strong>`;
+
     const tbody = document.getElementById('tablaEtapasBody');
     tbody.innerHTML = '';
-    
+
     for (const [etapaNom, info] of Object.entries(plan.asignacion)) {
+        const est = info.est_min !== undefined ? info.est_min.toFixed(1) : '0.0';
+        const eft = info.eft_min !== undefined ? info.eft_min.toFixed(1) : info.duracion_min.toFixed(1);
+        const mIn = info.masa_entrada_kg !== undefined ? info.masa_entrada_kg.toFixed(1) : '-';
+        const mOut = info.masa_salida_kg !== undefined ? info.masa_salida_kg.toFixed(1) : '-';
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="fw-bold">${etapaNom}</td>
             <td><span class="badge bg-light text-dark border">${info.recurso_nombre}</span></td>
-            <td class="text-end">${info.duracion_min.toFixed(1)} min</td>
+            <td class="text-end"><small class="text-muted">[${est}, ${eft}] min</small></td>
+            <td class="text-end"><small>${mIn} &rarr; <strong>${mOut} kg</strong></small></td>
             <td class="text-end">$${info.costo_materia_prima.toFixed(2)}</td>
             <td class="text-end">$${info.costo_procesamiento.toFixed(2)}</td>
             <td class="text-end">$${info.costo_trasvase.toFixed(2)}</td>
@@ -209,15 +243,17 @@ function renderizarResultados(plan) {
 
 async function crearOrdenPlanificada() {
     if (!planCalculadoActual) return;
-    
+
     const payload = {
         producto_id: parseInt(document.getElementById('productoSelect').value),
         cantidad: parseFloat(document.getElementById('cantidadInput').value),
         prioridad: parseInt(document.getElementById('prioridadSelect').value),
         v_target: document.getElementById('vTargetInput').value ? parseFloat(document.getElementById('vTargetInput').value) : null,
+        deadline_min: document.getElementById('deadlineMinInput').value ? parseFloat(document.getElementById('deadlineMinInput').value) : null,
+        retropropagar_merma: document.getElementById('retropropagarMermaCheck').checked,
         plazo_entrega: document.getElementById('plazoEntregaInput').value || null
     };
-    
+
     try {
         const resp = await fetch('/planificador/api/crear_orden_optimizada', {
             method: 'POST',
@@ -225,10 +261,10 @@ async function crearOrdenPlanificada() {
             body: JSON.stringify(payload)
         });
         const data = await resp.json();
-        
+
         if (data.success) {
-            alert(`✅ ${data.mensaje}\n\nOrden ID: ${data.orden_id} creada en estado pendiente.`);
-            window.location.href = '/operador';
+            alert(`✅ ${data.mensaje}\n\nOrden ID: ${data.orden_id} | Masa Inicial m0: ${data.masa_inicial_kg.toFixed(2)} kg -> Salida Neta: ${data.masa_final_kg.toFixed(2)} kg.`);
+            window.location.href = '/mes';
         } else {
             alert('Error al crear orden: ' + data.error);
         }

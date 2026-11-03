@@ -460,27 +460,40 @@ class Orquestador:
         
         # Bucle Rápido (Fast Loop - Sección VI.A):
         # Calcular duración real desde el último cambio de token hasta este evento
+        # (o usar la duración física reportada por telemetría SCADA/Edge si se provee)
         # y actualizar el estado del token aplicando las Ecuaciones (5)-(8)
         duracion_real = 0.0
         costo_paso = 0.0
-        if token_actual.timestamp and timestamp:
+        if isinstance(mediciones, dict):
+            if mediciones.get("duracion_min") is not None:
+                duracion_real = float(mediciones["duracion_min"]) * 60.0
+            elif mediciones.get("tiempo_efectivo_motor_seg") is not None:
+                duracion_real = float(mediciones["tiempo_efectivo_motor_seg"])
+        if duracion_real <= 0.0 and token_actual.timestamp and timestamp:
             duracion_real = (timestamp - token_actual.timestamp).total_seconds()
-            if duracion_real > 0 and recurso_nombre:
-                costo_hora = self._obtener_costo_hora_recurso(orden_id, red_nombre, recurso_nombre)
-                costo_paso = (duracion_real / 3600.0) * costo_hora
+        if token_actual.timestamp and timestamp:
             token_actual.timestamp = timestamp
+        if duracion_real > 0 and recurso_nombre:
+            costo_hora = self._obtener_costo_hora_recurso(orden_id, red_nombre, recurso_nombre)
+            costo_paso = (duracion_real / 3600.0) * costo_hora
 
-        # Extraer adición de masa o rendimiento físico observado si vienen en mediciones SCADA
+        # Extraer adición de masa o rendimiento físico observado si vienen en mediciones SCADA/Edge/Operador
         masa_adicional_ev = 0.0
         costo_mp_ev = 0.0
         gamma_ev = 1.0
         if isinstance(mediciones, dict):
             masa_adicional_ev = float(mediciones.get("masa_adicionada", 0.0) or 0.0)
             costo_mp_ev = float(mediciones.get("costo_materia_prima", 0.0) or 0.0)
+            masa_base = token_actual.material + masa_adicional_ev
             if "rendimiento_gamma" in mediciones and mediciones["rendimiento_gamma"] is not None:
                 gamma_ev = float(mediciones["rendimiento_gamma"])
-            elif "masa_salida" in mediciones and mediciones["masa_salida"] is not None and (token_actual.material + masa_adicional_ev) > 0:
-                gamma_ev = float(mediciones["masa_salida"]) / (token_actual.material + masa_adicional_ev)
+            elif "masa_salida" in mediciones and mediciones["masa_salida"] is not None and masa_base > 0:
+                gamma_ev = float(mediciones["masa_salida"]) / masa_base
+            elif "merma_kg" in mediciones and mediciones["merma_kg"] is not None and masa_base > 0:
+                merma = float(mediciones["merma_kg"])
+                gamma_ev = max(0.01, (masa_base - merma) / masa_base)
+                mediciones.setdefault("masa_entrada", masa_base)
+                mediciones.setdefault("masa_salida", masa_base - merma)
 
         token_actual.transformar_etapa(
             masa_adicionada=masa_adicional_ev,
@@ -918,6 +931,8 @@ class Orquestador:
             # 2. Ecuación (13) y (15): Calibración del Índice de Desviación Energética EDR(R)
             if recurso_eq and getattr(recurso_eq, 'medidor_energia', False):
                 energia_kwh_real = mediciones.get("energia_kwh")
+                if energia_kwh_real is None:
+                    energia_kwh_real = mediciones.get("kwh_consumidos")
                 if energia_kwh_real is not None:
                     try:
                         energia_kwh_real = float(energia_kwh_real)

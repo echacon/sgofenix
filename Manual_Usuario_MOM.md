@@ -2,149 +2,105 @@
 
 ---
 
-## 0. Filosofía del Sistema: El Lote como Token Inteligente
+## 0. Filosofía de FÉNIX: Primero el «Saber Hacer», Después la Tecnología
 
 **FÉNIX** es un sistema de Gestión y Ejecución de Operaciones de Manufactura (**MOM / MES**) diseñado específicamente para Pequeñas y Medianas Empresas (PyMEs).
 
-A diferencia de los sistemas tradicionales rígidos y centralizados, FÉNIX organiza la fábrica como una red de unidades autónomas y colaborativas (**Holones**), capaces de adaptarse rápidamente y **reiniciar o recuperarse desde cualquier punto sin pérdida de información**.
+A diferencia de los sistemas comerciales tradicionales que exigen comprar costosos PLCs y sensores en toda la fábrica antes de empezar, **FÉNIX** parte de una premisa práctica:
 
-### Principio Fundamental de Operación
-> **"Cada lote de producción es un *token digital* que viaja por la red acumulando trazabilidad física y económica (tiempos reales, cantidades, mermas y costos por actividad ABC). Cada recurso es un *holón inteligente con conocimiento* que encapsula cómo procesar, cuánto rinde y con quién conectarse en la planta."**
-
-```
-   ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
-   │  SABER HACER    │       │    EL HACER     │       │   EL APRENDER   │
-   │   (Estático)    │ ────► │   (Dinámico)    │ ────► │   (Histórico)   │
-   │ Familias, Rutas,│       │ Órdenes activas,│       │ Calibración     │
-   │ Tarifas y YAML  │       │ Tokens y SCADA  │       │ EWMA y EDR      │
-   └─────────────────┘       └─────────────────┘       └─────────────────┘
-```
-
----
-
-## 1. Estructura de la Fábrica: El Enfoque de "Moldes y Piezas"
-
-Para que la configuración sea intuitiva y escale con su empresa, la información se organiza en tres pilares:
-
-* **Pilar 1: La Taxonomía (Los Moldes Maestros):** Define categorías genéricas (ej. Familia *"Pinturas Arquitectónicas"*, Tipo de Recurso *"Dispersor de Alta Velocidad"*, Operación Maestra *"Dispersión Estándar"*).
-* **Pilar 2: Sus Productos (La Demanda - Qué se fabrica):** Especifica cada producto concreto (ej. *"Látex Blanco Premium 1000L"*), incluyendo su **Lista de Materiales (BOM)** y su **Ruta de Proceso requerida (BOP)**.
-* **Pilar 3: Sus Recursos (La Oferta - Con qué se fabrica):** Define sus máquinas y puestos de trabajo reales (ej. `DIS-A`, `DIL-1`, `ENV-AUTO`). Aquí se configuran sus capacidades, rendimientos ($\gamma$), tarifas horarias ($\kappa, \omega, \delta$) y la **matriz de conectividad física ($\mathcal{K}$)**.
-
----
-
-## 2. Los 4 Módulos Web de la Interfaz FÉNIX
-
-La interfaz web unificada de FÉNIX proporciona cuatro paneles especializados accesibles desde la barra superior de navegación:
+> **«La verdadera inteligencia de una planta está en conectar el proceso de negocio (pedidos, costos y fechas de entrega) con el proceso de piso de planta (recetas, equipos, tuberías y calidad). Primero estructuramos el saber hacer; luego incorporamos tecnología donde realmente genera valor.»**
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ FÉNIX MOM  |  [🚦 Semáforo Pre-Producción]  [📐 Planificador & Cotizador]  │
-│            |  [🏭 Dashboard Operador]        [📈 Calibración & Aprendizaje] │
-└─────────────────────────────────────────────────────────────────────────────┘
+   ┌────────────────────────┐       ┌────────────────────────┐       ┌────────────────────────┐
+   │  1. EL SABER HACER     │       │     2. EL HACER        │       │    3. EL APRENDER      │
+   │  (Modelo de Planta)    │ ────► │ (Cuenta Corriente Viva)│ ────► │ (Calibración Continua) │
+   │ Productos, Recetas,    │       │ Lotes en curso, costos │       │ Ajuste automático EWMA │
+   │ Equipos y Tuberías (K) │       │ reales ABC y mermas    │       │ de tiempos, merma y EDR│
+   └────────────────────────┘       └────────────────────────┘       └────────────────────────┘
 ```
 
 ---
 
-## 3. Módulo 1: Semáforo y Diagnóstico Pre-Producción (`/cargas/validar`)
+## 1. Ruta de Carga: Cómo Configurar una Planta en 6 Pasos
 
-Antes de iniciar cualquier orden en planta, el ingeniero de procesos debe consultar el **Semáforo Pre-Producción**. FÉNIX analiza toda la base de datos para garantizar que no existan inconsistencias (*Anti-Basura*).
+Para montar una aplicación en FÉNIX desde cero, el sistema sigue una **Ruta de Carga de 6 Pasos** que garantiza que no existan cabos sueltos:
 
-```
-                    ┌──────────────────────────────────────────────┐
-                    │      MOTOR DE VALIDACIÓN PRE-PRODUCCIÓN      │
-                    └──────────────────────┬───────────────────────┘
-                                           │
-         ┌───────────────────┬─────────────┴───────┬───────────────────┐
-         ▼                   ▼                     ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ 1. Integridad   │ │ 2. Conectividad │ │ 3. Invariantes  │ │ 4. Prueba en    │
-│    Referencial  │ │    Física (K)   │ │    y Redes      │ │    Seco (Dry Run)│
-└────────┬────────┘ └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
-         │                   │                     │                   │
-         └───────────────────┼─────────────────────┴───────────────────┘
-                             ▼
-              ┌─────────────────────────────┐
-              │   SEMÁFORO DE DIAGNÓSTICO   │
-              │  [VERDE / AMARILLO / ROJO]  │
-              └─────────────────────────────┘
-```
-
-### 3.1. Interpretación de los Estados del Semáforo
-
-| Color | Estado en Pantalla | Significado Operativo | Acción Recomendada |
-| :---: | :---: | :--- | :--- |
-| 🟢 | **VERDE (Listo para Producir)** | 100% de integridad, conectividad física y lógica verificada. | Se pueden recibir, cotizar y ejecutar órdenes reales. |
-| 🟡 | **AMARILLO (Advertencias Menores)** | Datos no críticos faltantes (ej. tarifas secundarias en cero). | Se puede operar, pero se recomienda completar los costos. |
-| 🔴 | **ROJO (Bloqueo Crítico)** | Errores de ruta rota, servicio huérfano o red de Petri no conexa. | Se bloquea el lanzamiento de órdenes hasta corregir los datos. |
+1. **Paso 1 — Estructura de la Empresa (`00_empresa.yaml`):** Se definen las áreas administrativas (`UnidadNegocio`) y las secciones físicas de la planta (`UnidadFuncional`, por ejemplo: *Sección Dispersión*, *Sección Envasado*).
+2. **Paso 2 — Taxonomía y Servicios (`01_familias.yaml`, `02_tipos_operacion.yaml`):** Se declaran las familias de productos y las operaciones técnicas que existen en la fábrica (*Dispersión*, *Molienda*, *Dilución*, *Control de Calidad*).
+3. **Paso 3 — Patrones de Proceso y Redes (`03_patrones.yaml` y archivos `.pnml`):** Se cargan las redes de proceso que describen el flujo general de la orden (**Red Integradora**) y los pasos detallados dentro de cada máquina (**Redes de Servicio**), junto con sus reglas de pase de mensajes (`encadenamiento.yaml`).
+4. **Paso 4 — Recursos, Tarifas ABC y Tuberías (`04_recursos.yaml`, `05_capacidades.yaml`, `07_conectividad.yaml`):**
+   * Se registran los equipos y operarios con sus costos horarios reales: energía ($\kappa$), mano de obra ($\omega$), depreciación ($\delta$) y gastos generales/overhead ($\mu$).
+   * Se indica el rendimiento físico esperado de cada máquina ($\gamma$, por ejemplo `0.98` si hay 2% de merma) y si cuenta con **medidor de energía eléctrica** (`medidor_energia: true/false`).
+   * Se declaran las tuberías, mangueras o bombas que conectan una máquina con otra (**Grafo de Conectividad $\mathcal{K}$**).
+5. **Paso 5 — Productos, Fórmulas e Invariantes (`06_productos.yaml`, `asignaciones_recursos.yaml`):** Se cargan los productos, su lista de materias primas (BOM), los equipos candidatos por etapa y los límites seguros de operación (por ejemplo: *Temperatura máxima $55^\circ\text{C}$*).
+6. **Paso 6 — Validación en el Semáforo Pre-Producción (`/cargas/validar`):** Antes de lanzar la primera orden, el Semáforo verifica automáticamente la integridad de los datos y realiza una simulación en seco (*Dry-Run*).
 
 ---
 
-## 4. Módulo 2: Planificador Holónico y Cotizador (`/planificador`)
+## 2. Las 3 Modalidades de Captura en Piso de Planta (Versiones A, B y C)
 
-Permite cotizar y optimizar la ruta de producción antes de comprometer materiales en planta.
+Una de las mayores fortalezas de **FÉNIX** para una PyME es que permite operar con tres niveles tecnológicos distintos —e incluso **combinarlos dentro de la misma planta**— sin cambiar el sistema:
 
-### 4.1. Cómo Usar el Cotizador:
-1. Seleccione el **Producto** deseado del menú desplegable (ej. `Látex Blanco Premium 1000L`).
-2. Ingrese la **Cantidad Requerida ($V_{\text{target}}$)** en litros o kilogramos (ej. `1000`).
-3. Presione el botón **"Calcular Ruta Óptima y Cotización"**.
-
-### 4.2. Resultados Mostrados en Pantalla:
-* **Ruta de Recursos Seleccionada:** Las máquinas asignadas para cada etapa (ej. `DIS-A` $\to$ `DIL-1` $\to$ `ENV-AUTO`).
-* **Materia Prima Total Requerida:** La masa inicial corregida para absorber las mermas intermedias:
-  $$M_{\text{inicial}} = \frac{V_{\text{target}}}{\gamma_1 \cdot \gamma_2 \cdots \gamma_K}$$
-* **Desglose de Costos ABC:**
-  * Costo de Materia Prima ($\$$).
-  * Costo de Energía Eléctrica ($\$$).
-  * Costo de Mano de Obra Directa ($\$$).
-  * Costo de Depreciación de Maquinaria ($\$$).
-  * **Costo Total Estimado ($\$) y Costo Unitario ($\$/\text{kg}$).**
-
----
-
-## 5. Módulo 3: Terminal de Ejecución del Operador (`/operador`)
-
-Diseñado para uso en pantallas táctiles (tablets o terminales de puesto de trabajo en planta).
-
-### 5.1. Flujo de Trabajo del Operario:
-1. **Selección de Orden:** El operario visualiza las órdenes activas en el tablero.
-2. **Visualización de Etapa y Máquina:** La pantalla muestra el marcado actual de la Red de Petri (ej. *"Cargando Material"*, *"Dispersión Fuerte"*, *"Control de Calidad"*).
-3. **Botón de Disparo Manual (Trigger 200):** Al completar físicamente una actividad, el operario pulsa **"Avanzar Paso"**.
-4. **Compuertas de Calidad (QA Gate):**
-   * Si la viscosidad o pH están dentro de especificación, se presiona **"Aprobar Calidad"** (Trigger 201 $\to$ avanza a envasado).
-   * Si no cumple especificación, se presiona **"Rechazar / Reproceso"** (Trigger 200 $\to$ retorna al mezclador para ajuste).
-5. **Transferencia Automática (Handshake Inter-Redes):** Al terminar la última etapa de una máquina, el sistema envía el mensaje inter-redes y habilita automáticamente la máquina siguiente en la ruta.
-
----
-
-## 6. Módulo 4: Panel de Calibración y Aprendizaje (`/aprendizaje`)
-
-Permite a la gerencia de planta auditar cómo el sistema aprende y calibra sus estándares basándose en la ejecución real de las órdenes cerradas.
-
-### 6.1. Funcionalidades del Panel:
-* **Auditoría de Calibración EWMA:** Muestra la evolución del tiempo nominal vs. tiempo real para cada etapa, y cómo la media móvil exponencial actualiza el estándar de la planta:
-  $$\hat{\tau}_{\text{nuevo}} = \alpha \cdot \tau_{\text{real}} + (1 - \alpha) \cdot \hat{\tau}_{\text{anterior}}$$
-* **Monitoreo de Degradación Energética ($EDR$):**
-  * $EDR \le 1.10$: Equipo en condición óptima (tarjeta verde).
-  * $EDR > 1.15$: Alerta preventiva de sobreconsumo / fricción mecánica (tarjeta ámbar/roja).
-* **Auditoría de Resiliencia ante Tracking Error:** Muestra la lista de órdenes que sufrieron pérdida de telemetría y fueron cerradas por resiliencia, confirmando su **exclusión estadística** del lazo de aprendizaje.
-
----
-
-## 7. Guía de Solución de Problemas Frecuentes (Troubleshooting)
-
-| Síntoma / Mensaje de Error | Causa Raíz Probable | Solución Paso a Paso |
+| Modalidad | ¿Cómo funciona en la planta? | ¿Cuándo usarla en la PyME? |
 | :--- | :--- | :--- |
-| **`"Error: Servicio SVC-XXX huérfano"`** | Un producto requiere un servicio que ninguna máquina tiene registrado en su lista de servicios. | Abra el archivo de Recursos (`yaml` o Excel), ubique la máquina correspondiente y agregue `SVC-XXX` en su bloque `services`. |
-| **`"Error: Ruta física rota para Producto P"`** | Las máquinas que hacen las etapas consecutivas $E_i$ y $E_{i+1}$ no están conectadas en la matriz $\mathcal{K}$. | Verifique la línea `connectivity:` del recurso de la etapa $E_i$ y asegúrese de que incluya el ID del recurso de la etapa siguiente. |
-| **`"Alerta: Yield fuera de rango [0.01, 1.00]"`** | Se ingresó un porcentaje entero (ej. `97`) en lugar de la fracción decimal (`0.97`). | Modifique el valor de `yield` para que sea decimal entre 0 y 1 (ej. 0.95 para 5% de merma). |
-| **`"Red bloqueada en espera de mensaje"`** | La máquina anterior no ha registrado su evento final o el mensaje no coincidía con el ID/nombre. | En el panel de Operador, complete el paso final en la máquina emisora para disparar el mensaje de transferencia. |
-| **`"Alerta: EDR > 1.15 en Recurso R"`** | El sensor SCADA detecta sobreconsumo eléctrico continuado en la máquina (posible fricción o desgaste de rodamiento). | Programe una inspección mecánica preventiva. El sistema automáticamente penalizará el costo de ese equipo en la optimización hasta que se normalice. |
+| **Versión A: Sin Tecnología de Piso (Operador con Tablet)** | El operario usa una tablet o teléfono en su puesto (`/operador`) y pulsa los botones de inicio/fin de cada etapa (ej. *«Cargar sólidos»*, *«Fin dispersión»*), anotando lecturas manuales si aplica. | **Día 1 de implementación (Inversión \$0 en hardware):** Ideal para capturar tiempos reales, costos por lote y mermas de inmediato. |
+| **Versión B: Tecnología Media (SCADA / PLC Existente)** | Si la empresa ya tiene un SCADA o PLC en alguna línea, el conector de FÉNIX captura automáticamente las señales de inicio/fin de paso y las lecturas de proceso. | Cuando la PyME ya posee máquinas automatizadas o un SCADA previo y desea integrarlos al costeo y seguimiento de órdenes. |
+| **Versión C: Tecnología de Borde de Bajo Coste (Arduino / ESP32 + Raspberry Pi)** | Se instalan sensores económicos (pinza amperimétrica no invasiva para medir los kWh del equipo, sensor de temperatura y botonera industrial) conectados a un **Arduino/ESP32** y una **Raspberry Pi** que envían los datos a FÉNIX por Wi-Fi. | **Crecimiento quirúrgico de bajo costo (< \$100 por máquina):** Cuando los datos del Nivel A muestran que un reactor o molino es crítico y se desea medir su desgaste energético (**EDR**) y temperatura en tiempo real. |
 
 ---
 
-## 8. Checklist de Buenas Prácticas para Planta
+## 3. Los 5 Módulos Web de la Interfaz FÉNIX
 
-1. **Ejecute el Semáforo Pre-Producción diariamente o tras cada carga de catálogo.**
-2. **Revise las alertas de EDR semanalmente para anticipar fallas de mantenimiento.**
-3. **Asegure que los operarios registren las aprobaciones de calidad en tiempo real para mantener la trazabilidad del lote.**
-4. **Si traslada mangueras o conexiones físicas entre tanques, actualice la conectividad del recurso en el sistema.**
+La barra superior de navegación da acceso directo a los cinco paneles del sistema:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ FÉNIX MOM  |  [🖥️ Centro de Control MES]  [🚦 Semáforo Pre-Producción]  [📐 Cotizador]   │
+│            |  [🏭 Terminal Operador]      [📈 Calibración EWMA & EDR]                    │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.1. Módulo 1: Centro de Control Ejecutivo MES (`/mes`)
+Es la pantalla principal para el Jefe de Planta, Supervisor e Ingeniero de Integración. Consta de tres vistas integradas:
+* **Mapa Vivo de Holones Recurso:** Muestra todas las máquinas de la planta, su estado actual (`LIBRE` / `EN PRODUCCIÓN`), su modalidad de captura (**Modo A**, **Modo B** o **Modo C**), su tarifa horaria efectiva, su rendimiento másico ($\gamma$) y su indicador de salud energética ($\mathrm{EDR}$).
+* **Seguimiento de Órdenes y «Cuenta Corriente Viva» del Lote:** Muestra para cada orden activa el avance en la **Red Integradora** y en las **Redes de Servicio de los Equipos**, detallando en tiempo real:
+  * **Masa actual en proceso ($m$)** en kg o litros.
+  * **Costo total acumulado ($c_{\mathrm{acc}}$)** frente al presupuesto límite ($V_{\mathrm{target}}$).
+  * **Costo unitario real ($u = c_{\mathrm{acc}} / m$)** que absorbe automáticamente las mermas ocurridas hasta el momento.
+* **Asistente de Ruta de Carga y Simulador de Integración A / B / C:** Permite verificar el estado de los 6 pasos de carga de la planta y probar en vivo el envío de eventos hacia una orden desde las tres modalidades (**Botón Operador A**, **Trama SCADA B** o **Nodo Edge Arduino/Raspberry C**).
+
+---
+
+### 3.2. Módulo 2: Semáforo y Diagnóstico Pre-Producción (`/cargas/validar`)
+Verifica en 4 fases que los archivos cargados no tengan errores antes de autorizar la producción:
+* 🟢 **VERDE (Listo para Producir):** Recetas, servicios, tuberías ($\mathcal{K}$) y redes de Petri 100% válidas.
+* 🟡 **AMARILLO (Advertencias Menores):** Se puede producir, pero existen tarifas secundarias en cero.
+* 🔴 **ROJO (Bloqueo Crítico):** Ruta física rota o servicio inexistente; indica exactamente qué línea corregir.
+
+---
+
+### 3.3. Módulo 3: Planificador Holónico y Cotizador (`/planificador`)
+Permite cotizar un lote y elegir la combinación óptima de equipos antes de fabricar:
+1. Seleccione el **Producto**, la **Cantidad Neta a Entregar ($q_n$)**, la **Prioridad**, el **Presupuesto Máximo ($V_{\mathrm{target}}$)** opcional y el **Plazo Máximo / Deadline ($d$ en minutos)**.
+2. FÉNIX ejecuta el **Algoritmo 1 (Branch-and-Bound)** y muestra:
+   * **Masa Inicial Requerida ($m_0$)** vs. **Masa Final Entregada ($q_n$):** Calcula cuánto material adicional debe cargarse al inicio para compensar las mermas de los equipos seleccionados:
+     $$m_0 = \frac{q_n}{\gamma_1 \cdot \gamma_2 \cdots \gamma_n}$$
+   * **Cronograma por Etapa ($\mathrm{EAT} \to \mathrm{EST} \to \mathrm{EFT}$):** Respeta la agenda de reservas de cada máquina y garantiza que el lote termine antes de la fecha límite.
+   * **Desglose de Costos ABC y Botón de Lanzamiento de Orden.**
+
+---
+
+### 3.4. Módulo 4: Terminal de Ejecución del Operador (`/operador`)
+Diseñado para pantallas táctiles en piso de planta (**Versión A**):
+* Muestra las órdenes activas y los botones grandes de las actividades habilitadas en cada estación (*«Asignar equipo»*, *«Cargar sólidos»*, *«Aprobar Calidad»* / *«Reproceso»*).
+* Al finalizar el trabajo en una máquina, FÉNIX transfiere automáticamente el testigo (Mensaje `201`) al siguiente equipo de la ruta.
+
+---
+
+### 3.5. Módulo 5: Panel de Calibración EWMA y Salud Energética (`/aprendizaje`)
+Permite auditar cómo el sistema aprende automáticamente al cerrarse cada orden:
+* **Calibración de Tiempos ($\tau$) y Rendimientos ($\gamma$):** Muestra cómo se ajustan los estándares de cada máquina según el desempeño real de los últimos lotes.
+* **Monitoreo de Condición Energética ($\mathrm{EDR}$):** En los equipos que cuentan con medidor de energía (Versión B o Versión C), compara el consumo eléctrico real frente al nominal:
+  * $\mathrm{EDR} \le 1.10$: Equipo operando en condición saludable.
+  * $\mathrm{EDR} > 1.15$: Alerta de sobreconsumo por desgaste mecánico o incrustación (recomienda mantenimiento preventivo y ajusta automáticamente el costo energético del equipo).
+* **Aislamiento de Errores de Seguimiento (*Tracking Error*):** Si una orden se cerró forzosamente por caída de red u olvido de registro intermedio, aparece identificada y excluida del cálculo estadístico para no distorsionar los promedios de la planta.
