@@ -1,6 +1,46 @@
-# utils/motor_abtppn.py - Versión con logs limpios
+# utils/motor_abtppn.py - Motor de Ejecución de Redes de Petri AB-TPPN
 
-"""Motor de Redes de Petri ABTPPN con soporte para tokens coloreados y triggers"""
+"""
+Motor de Redes de Petri Temporizadas Basadas en Actividades (AB-TPPN).
+======================================================================
+Implementa el formalismo matemático definido en la Sección IV del artículo
+IEEE Transactions on Industrial Informatics:
+
+Definición 1 (AB-TPPN):
+    Una Red de Petri Temporizada de Procesos Basada en Actividades (AB-TPPN) se
+    define mediante la 7-tupla:
+        N = <P, T, F, tau, Phi, Q, M_0>
+    donde:
+    - P = P_proc U P_ctrl U P_res: Conjunto finito de lugares (etapas de proceso,
+      estados de control/sincronización y disponibilidad de recursos).
+    - T = T_auto U T_200 U T_201 U T_202: Conjunto finito de transiciones particionado
+      por tipo de disparo (trigger):
+        * T_auto (None): Transiciones automáticas inmediatas.
+        * T_200 ('200'): Transiciones sincronizadas por eventos externos de planta (SCADA/HMI).
+        * T_201 ('201'): Transiciones de sincronización inter-red por paso de mensajes (PPR).
+        * T_202 ('202'): Transiciones temporizadas (watchdog / timeout).
+    - F subset (P x T) U (T x P): Relación de flujo (arcos dirigidos).
+    - tau: P_proc -> R+ : Función de tiempo de residencia asociado a los lugares de proceso.
+    - Phi: P_proc -> R+ : Función de tasa de acumulación de costo ABC en cada lugar activo.
+    - Q: T_201 -> T_201 : Función de acoplamiento síncrono/asíncrono de paso de mensajes
+      entre la Red de Integración (N_E) y las Redes de Servicio de los Recursos (N_S).
+    - M_0: Marcado inicial de la red.
+
+Estado del Token Coloreado (Ecuación 4):
+    Cada orden de producción circula como un token coloreado estructurado:
+        k = <lot_id, m, c_acc, raw_add, t_arr, V_target>
+    y mantiene explícitamente el costo unitario con absorción de mermas (u = c_acc / m).
+
+Reglas de Evolución Contable y Física al Disparar Transiciones (Ecuaciones 5-8):
+    - Ecuación (5) [Balance de Masa con Rendimiento]:
+        m_exit = (m_enter + delta_m_raw) * gamma(p, R)
+    - Ecuación (6) [Costo de Procesamiento ABC en la Etapa]:
+        c_proc(p, R) = (kappa_R^eff + omega_R + delta_R + mu_R) * tau(p, R)
+    - Ecuación (7) [Costo Total Acumulado del Lote]:
+        c_acc_exit = c_acc_enter + c_raw(p) + c_proc(p, R)
+    - Ecuación (8) [Absorción de Merma en el Costo Unitario]:
+        u_exit = c_acc_exit / m_exit = (c_acc_enter + c_raw(p) + c_proc(p, R)) / ((m_enter + delta_m_raw) * gamma(p, R))
+"""
 
 import logging
 from datetime import datetime
@@ -14,13 +54,25 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TokenColoreado:
     """
-    Token coloreado que transporta el estado holónico y contable de la orden (WIP).
-    Formalización: <lot_id, m, c_acc, raw_add, t_arr, V_target>
+    Token coloreado que transporta el estado físico (masa/volumen) y contable (ABC)
+    de la orden de producción (Work-In-Progress, WIP) a través de la red AB-TPPN.
+
+    Formalización (Ecuación 4):
+        k = <lot_id, m, c_acc, raw_add, t_arr, V_target>
+
+    Atributos:
+        orden_id (str): Identificador único del lote u orden (lot_id).
+        material (float): Masa o volumen actual de producto en proceso (m).
+        costo (float): Costo total acumulado del lote hasta la etapa actual (c_acc).
+        timestamp (Optional[datetime]): Marca de tiempo de llegada/última transición (t_arr).
+        v_target (Optional[float]): Cota máxima de viabilidad económica del lote (V_target).
+        costo_unitario (float): Costo por unidad de masa saliente con absorción de mermas (u = c_acc / m).
+        coste (float): Alias retrocompatible de `costo`.
     """
     orden_id: str
     material: float                          # Masa o volumen actual (m)
     costo: float = 0.0                       # Costo acumulado del lote c_acc
-    timestamp: Optional[datetime] = None     # Marca de tiempo de llegada / último evento
+    timestamp: Optional[datetime] = None     # Marca de tiempo de llegada / último evento (t_arr)
     v_target: Optional[float] = None         # Cota máxima de viabilidad económica (V_target)
     costo_unitario: float = 0.0              # Costo unitario con absorción de mermas (u = c_acc / m)
     coste: float = 0.0                       # Alias retrocompatible
@@ -36,7 +88,10 @@ class TokenColoreado:
         self.actualizar_costo_unitario()
 
     def actualizar_costo_unitario(self) -> float:
-        """Calcula u = c_acc / m con absorción de mermas."""
+        """
+        Calcula el costo unitario con absorción de mermas según la Ecuación (8):
+            u = c_acc / m
+        """
         if self.material and self.material > 0:
             self.costo_unitario = self.costo / self.material
         else:
@@ -44,7 +99,10 @@ class TokenColoreado:
         return self.costo_unitario
 
     def acumular_costo(self, delta_costo: float):
-        """Acumula un costo de procesamiento, energía, mano de obra o trasvase."""
+        """
+        Incrementa el costo acumulado del lote (c_acc) por procesamiento ABC,
+        energía, mano de obra o transporte, y recalcula u = c_acc / m.
+        """
         self.costo += delta_costo
         self.coste = self.costo
         self.actualizar_costo_unitario()
@@ -52,10 +110,13 @@ class TokenColoreado:
     def transformar_etapa(self, masa_adicionada: float = 0.0, costo_materia_prima: float = 0.0,
                           costo_operativo: float = 0.0, rendimiento_gamma: float = 1.0):
         """
-        Aplica la transformación completa de una etapa del proceso:
-        1. Balance de masa con adición y rendimiento: m_exit = (m_enter + delta_m) * gamma
-        2. Acumulación de costo: c_acc_exit = c_acc_enter + c_raw + c_proc
-        3. Absorción de merma en el costo unitario: u_exit = c_acc_exit / m_exit
+        Aplica la transformación termodinámica y contable de una etapa de proceso (Ecs. 5-8):
+        1. Balance de masa con adición secundaria y factor de rendimiento (Ec. 5):
+               m_exit = (m_enter + delta_m_raw) * gamma(p, R)
+        2. Acumulación de costos de materia prima y procesamiento ABC (Ec. 6 y Ec. 7):
+               c_acc_exit = c_acc_enter + c_raw(p) + c_proc(p, R)
+        3. Absorción de la merma física en el costo unitario saliente (Ec. 8):
+               u_exit = c_acc_exit / m_exit
         """
         masa_total_in = self.material + max(0.0, masa_adicionada)
         gamma = max(0.0001, min(1.0, rendimiento_gamma))
@@ -65,7 +126,10 @@ class TokenColoreado:
         self.acumular_costo(delta_costo)
 
     def es_economicamente_viable(self) -> bool:
-        """Verifica la cota de viabilidad económica: c_acc <= V_target."""
+        """
+        Verifica el invariante de viabilidad económica del lote:
+            c_acc <= V_target
+        """
         if self.v_target is not None and self.v_target > 0:
             return self.costo <= self.v_target
         return True
@@ -73,7 +137,11 @@ class TokenColoreado:
 
 @dataclass
 class InstanciaRedMem:
-    """Instancia de red en memoria para una orden específica"""
+    """
+    Representación en memoria de una instancia activa de una red AB-TPPN
+    (ya sea la Red de Integración N_E de un Producto o una Red de Servicio N_S
+    de un Recurso) asociada a una orden de producción en curso.
+    """
     
     def __init__(self, id: int, red_nombre: str, orden_id: int,
                  marcado: dict, token: TokenColoreado, pnml_path: str = None):
@@ -110,7 +178,11 @@ class InstanciaRedMem:
 
 
 class MotorABTPPN:
-    """Motor de ejecución de Redes de Petri ABTPPN"""
+    """
+    Motor de ejecución formal de Redes de Petri AB-TPPN (N = <P, T, F, tau, Phi, Q, M_0>).
+    Gestiona el marcado dinámico M, la habilitación de transiciones particionadas
+    (T_auto, T_200, T_201, T_202) y la propagación del TokenColoreado entre lugares y redes.
+    """
     
     def __init__(self):
         self.instancias: Dict[int, InstanciaRedMem] = {}
@@ -404,6 +476,22 @@ class MotorABTPPN:
             v_target=getattr(instancia, 'token_v_target', None),
             costo_unitario=getattr(instancia, 'token_u', 0.0)
         )
+
+    def actualizar_token(self, instancia_id: int, token: TokenColoreado) -> bool:
+        """
+        Sincroniza el estado del TokenColoreado (masa m, costo acumulado c_acc,
+        costo unitario u = c_acc / m y marca de tiempo t_arr) en la instancia en memoria.
+        """
+        instancia = self.instancias.get(instancia_id)
+        if not instancia or not token:
+            return False
+        instancia.token_o = token.orden_id
+        instancia.token_m = token.material
+        instancia.token_c = token.costo
+        instancia.token_t = token.timestamp
+        instancia.token_v_target = token.v_target
+        instancia.token_u = token.costo_unitario
+        return True
     
     def eliminar_instancia(self, instancia_id: int):
         if instancia_id in self.instancias:

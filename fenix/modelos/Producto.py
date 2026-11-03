@@ -1,9 +1,26 @@
-#modelos/Producto.py
-#Modulo para la descripción del producto y su modelo
-
+# modelos/Producto.py - Modelos del Holón Producto (Demand Side) y Asignaciones
 """
-Modelo de Producto - Refactorizado
-Representa productos concretos que instancian patrones de taxonomía
+Módulo de representación ontológica del Lado de la Demanda (Demand Side) en el marco PPR Holónico.
+
+Formalismo de Referencia:
+-------------------------
+1. Holón Producto (Product Holon - PH, Ec. 2):
+   PH = <id, M, C_{raw_in}, E, N_E, d>
+   - id: Identificador único del producto o ruta (`Producto`, `HolonRuta`).
+   - M: Lista de materiales (Bill of Materials - `Formula` e `InsumoFormula`).
+   - C_{raw_in} : E -> R_{>=0}: Función que asigna a cada etapa de manufactura E_i
+     el costo de las adiciones suplementarias de materia prima requeridas en ese nodo
+     (`InsumoFormula.etapa_ruta_id`, `InsumoFormula.costo_unitario_estimado`).
+   - E = {E_1, ..., E_n}: Secuencia de etapas de manufactura (`EtapaRuta`).
+   - N_E: Red de Petri a nivel de etapas (red integradora) que define la precedencia.
+   - d: Plazo de entrega estricto (hard delivery deadline, gestionado en la orden).
+
+2. Enlace Recurso-Etapa (`AsignacionRecurso`):
+   Vincula una etapa abstracta E_i con un recurso físico candidato R in RH_i,
+   almacenando sus parámetros específicos calibrados por el lazo lento EWMA (Ecs. 12 y 14):
+   - `duracion_estimada_min` y `eficiencia_real`: Duración nominal tau(p, R) y factor de velocidad.
+   - `rendimiento_gamma`: Rendimiento másico local gamma(p, R) in (0, 1] que modela la absorción
+     de mermas físicas (Ec. 6, Ec. 7 y Proposición 1 / Ec. 9).
 """
 
 from typing import List, Optional, Dict, Any
@@ -17,8 +34,8 @@ from .Taxonomia import FamiliaProducto, PatronDeRuta, EtapaRuta
 
 class Producto(Base):
     """
-    Producto concreto que se fabrica.
-    Pertenece a una FamiliaProducto (taxonomía).
+    Producto concreto que se fabrica (instancia del Holón Producto PH).
+    Pertenece a una FamiliaProducto (taxonomía) que comparte patrones estructurales de proceso.
     """
     __tablename__ = "producto"
     
@@ -42,6 +59,11 @@ class Producto(Base):
     rutas: Mapped[List["HolonRuta"]] = relationship(back_populates="producto", cascade="all, delete-orphan")
 
 class HolonRuta(Base):
+    """
+    Especificación de Ruta de Manufactura del Holón Producto:
+    Agrupa la secuencia de etapas E, la red integradora N_E, la fórmula M (con inyecciones
+    de materia prima por etapa C_{raw_in}) y los criterios de calidad.
+    """
     __tablename__ = "holon_ruta"
     
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -53,7 +75,7 @@ class HolonRuta(Base):
     fecha_hasta: Mapped[Optional[str]] = mapped_column(String(20))
     
     # ═══════════════════════════════════════════════════════════════
-    # NUEVO: Condiciones genéricas como JSON
+    # Condiciones genéricas como JSON (rango de lote, prioridad, etc.)
     # ═══════════════════════════════════════════════════════════════
     condiciones: Mapped[Dict[str, Any]] = mapped_column(JSON, default={})
     
@@ -124,37 +146,35 @@ class HolonRuta(Base):
             if inventario.get(tipo, 0) < cantidad_min:
                 return False
         
-        # Otras condiciones personalizadas se pueden agregar aquí
-        
         return True
 
 class AsignacionRecurso(Base):
     """
-    Asigna un recurso REAL a una etapa abstracta del patrón.
-    Ahora usa la tabla base 'recurso' (polimórfica).
+    Asigna un recurso físico candidato R a una etapa abstracta E_i de un HolonRuta.
+    Almacena tanto los parámetros temporales como el rendimiento másico específico
+    del par (Etapa, Recurso), calibrados mediante el lazo lento EWMA (Ecs. 12 y 14):
+    - `duracion_estimada_min`: Duración nominal tau(p, R).
+    - `eficiencia_real`: Factor temporal de desempeño (tau_nominal / tau_real).
+    - `rendimiento_gamma`: Factor de recuperación de masa gamma(p, R) in (0, 1] (absorción de mermas).
     """
     __tablename__ = "asignacion_recurso"
     __table_args__ = {'extend_existing': True}
     
     id: Mapped[int] = mapped_column(primary_key=True)
     holon_ruta_id: Mapped[int] = mapped_column(ForeignKey("holon_ruta.id"))
-    etapa_ruta_id: Mapped[int] = mapped_column(ForeignKey("etapa_ruta.id"))
+    etapa_ruta_id: Mapped[int] = mapped_column(ForeignKey("etapa_ruta.id"), nullable=False)
     recurso_id: Mapped[int] = mapped_column(ForeignKey("recurso.id"))
     
     # Relaciones
     holon_ruta = relationship("HolonRuta", back_populates="asignaciones")
-    
-    etapa_ruta_id: Mapped[int] = mapped_column(ForeignKey("etapa_ruta.id"), nullable=False)
     etapa = relationship("EtapaRuta")
+    recurso = relationship("Recurso")
     
-    # Recurso REAL (ahora referenciando la tabla base)
-    recurso_id: Mapped[int] = mapped_column(ForeignKey("recurso.id"))
-    recurso  = relationship("Recurso")  # Importar Recursos primero
-    
-    # Parámetros concretos de esta asignación
+    # Parámetros concretos de esta asignación (calibrados por EWMA)
     duracion_estimada_min: Mapped[float] = mapped_column(Float, nullable=False)
     costo_por_hora_real: Mapped[float] = mapped_column(Float, default=0)
-    eficiencia_real: Mapped[float] = mapped_column(Float, default=1.0)  # 0 a 1
+    eficiencia_real: Mapped[float] = mapped_column(Float, default=1.0)      # Eficiencia temporal (tau_nom / tau_real)
+    rendimiento_gamma: Mapped[float] = mapped_column(Float, default=0.98)   # Rendimiento másico gamma(p, R) in (0, 1]
     
     # Parámetros operativos específicos para esta asignación
     velocidad_procesamiento: Mapped[Optional[float]] = mapped_column(Float)  # L/min, kg/h

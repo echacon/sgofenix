@@ -1,4 +1,30 @@
-# servicios/orquestador.py - Versión con logs limpios
+# servicios/orquestador.py - Orquestador Holónico y Calibración de Doble Escala Temporal
+
+"""
+Orquestador de Ejecución AB-TPPN y Bucle Cerrado SCADA de Doble Escala Temporal.
+================================================================================
+Implementa la coordinación en tiempo real entre las Redes de Petri AB-TPPN
+(Red de Integración N_E y Redes de Servicio N_S) y la arquitectura de retroalimentación
+SCADA-a-Red de Petri de doble escala temporal descrita en la Sección VI del artículo
+IEEE Transactions on Industrial Informatics:
+
+1. Bucle Rápido (Fast Loop — Seguimiento en Línea y Guardas de Invariantes):
+   - Sincroniza transiciones externas T_200 mediante eventos de planta/SCADA (`procesar_evento_planta`).
+   - Verifica en línea los invariantes físicos de proceso (`InvariantePaso`) antes de autorizar
+     el disparo de la transición.
+   - Ejecuta el acoplamiento de paso de mensajes Q: T_201 -> T_201 entre la Red de Integración
+     del Holón Producto y las Redes de Servicio de los Holones Recurso (`_procesar_todos_mensajes`).
+   - Actualiza en tiempo real el estado del token coloreado k = <lot_id, m, c_acc, raw_add, t_arr, V_target>
+     aplicando las Ecuaciones (5)-(8) (acumulación de costo ABC real y absorción de merma u = c_acc / m).
+
+2. Bucle Lento (Slow Loop — Auto-Calibración Estadística EWMA por Lote):
+   - Al completarse satisfactoriamente una orden (excluyendo cierres forzados por `error_seguimiento`),
+     `ejecutar_aprendizaje_orden` recalibra los parámetros del modelo mediante Promedio Móvil
+     Ponderado Exponencialmente (EWMA, Ecs. 12-15):
+       * Eficiencia temporal / duración efectiva tau_{k+1}(p, R)          [Ec. 12]
+       * Índice de Desviación Energética EDR_{k+1}(R) y kappa_R^eff       [Ec. 13 y Ec. 15]
+       * Factor de rendimiento másico gamma_{k+1}(p, R)                   [Ec. 14]
+"""
 
 import logging
 from datetime import datetime
@@ -22,13 +48,17 @@ logger = logging.getLogger(__name__)
 
 
 class Orquestador:
-    """Orquestador que coordina el motor y la persistencia"""
+    """
+    Coordinador central de ejecución holónica que integra el motor en memoria `MotorABTPPN`,
+    la persistencia transaccional de eventos/mensajes (`InstanciaRed`, `EventoRed`, `MensajePendiente`)
+    y los bucles de control en línea (Fast Loop) y aprendizaje estadístico EWMA (Slow Loop).
+    """
     
     def __init__(self, motor: MotorABTPPN, session):
         self.motor = motor
         self.session = session
         
-        # Mapeo de mensajes cargado desde BD
+        # Mapeo de mensajes cargado desde BD (Función de acoplamiento Q: T_201 -> T_201)
         self.mapeo_mensajes: Dict[Tuple[str, str], List[Tuple[str, str]]] = {}
         
         # Cache de redes cargadas
@@ -428,7 +458,9 @@ class Orquestador:
                 orden_id=f"ORD-{orden_id}", material=0, coste=0, timestamp=timestamp
             )
         
+        # Bucle Rápido (Fast Loop - Sección VI.A):
         # Calcular duración real desde el último cambio de token hasta este evento
+        # y actualizar el estado del token aplicando las Ecuaciones (5)-(8)
         duracion_real = 0.0
         costo_paso = 0.0
         if token_actual.timestamp and timestamp:
@@ -436,10 +468,28 @@ class Orquestador:
             if duracion_real > 0 and recurso_nombre:
                 costo_hora = self._obtener_costo_hora_recurso(orden_id, red_nombre, recurso_nombre)
                 costo_paso = (duracion_real / 3600.0) * costo_hora
-                token_actual.coste += costo_paso
             token_actual.timestamp = timestamp
+
+        # Extraer adición de masa o rendimiento físico observado si vienen en mediciones SCADA
+        masa_adicional_ev = 0.0
+        costo_mp_ev = 0.0
+        gamma_ev = 1.0
+        if isinstance(mediciones, dict):
+            masa_adicional_ev = float(mediciones.get("masa_adicionada", 0.0) or 0.0)
+            costo_mp_ev = float(mediciones.get("costo_materia_prima", 0.0) or 0.0)
+            if "rendimiento_gamma" in mediciones and mediciones["rendimiento_gamma"] is not None:
+                gamma_ev = float(mediciones["rendimiento_gamma"])
+            elif "masa_salida" in mediciones and mediciones["masa_salida"] is not None and (token_actual.material + masa_adicional_ev) > 0:
+                gamma_ev = float(mediciones["masa_salida"]) / (token_actual.material + masa_adicional_ev)
+
+        token_actual.transformar_etapa(
+            masa_adicionada=masa_adicional_ev,
+            costo_materia_prima=costo_mp_ev,
+            costo_operativo=costo_paso,
+            rendimiento_gamma=gamma_ev
+        )
         
-        # Disparar
+        # Disparar transición con el token actualizado (m_exit, c_acc_exit, u_exit)
         resultado = self.motor.disparar_transicion_con_token(inst_mem_id, trans_id, token_actual)
         
         if resultado:
@@ -451,7 +501,10 @@ class Orquestador:
                 if transicion_obj:
                     self._generar_mensajes_salida(inst_mem_id, trans_id, transicion_obj, token_nuevo)
             self.estabilizar_red(orden_id)
-            logger.info(f"   ✅ Procesado: {evento_nombre} → {trans_id} (dur={duracion_real:.1f}s, coste={costo_paso:.2f})")
+            logger.info(
+                f"   ✅ Procesado: {evento_nombre} → {trans_id} "
+                f"(dur={duracion_real:.1f}s, coste_paso={costo_paso:.2f}, u={token_actual.costo_unitario:.4f})"
+            )
             return True
         
         return False
@@ -787,18 +840,32 @@ class Orquestador:
         self.session.commit()
         logger.warning(f"⚠️ Orden {orden_id} cerrada por error_seguimiento: {motivo}. Excluida de calibración EWMA.")
 
-    def ejecutar_aprendizaje_orden(self, orden_id: int):
+    def ejecutar_aprendizaje_orden(self, orden_id: int, alfa: float = 0.2, n_min: int = 1):
         """
-        Analiza el historial de eventos de la orden y recalcula la eficiencia
-        real de los recursos usando un suavizado EWMA (alfa = 0.2).
-        Omite órdenes que hayan concluido con 'error_seguimiento' para no distorsionar estadísticas.
+        Bucle Lento (Slow Loop - Sección VI.B): Auto-Calibración Estadística EWMA.
+        Analiza el historial de eventos de la orden completada y recalibra los
+        parámetros de los recursos usando un suavizado exponencial EWMA (Ecs. 12-15):
+          - Ecuación (12): Calibración temporal (eficiencia_real = tau_nom / tau_meas).
+          - Ecuación (13) y (15): Índice de Desviación Energética EDR(R) y kappa_R^eff.
+          - Ecuación (14): Factor de rendimiento físico gamma(p, R) = m_exit / m_enter.
+        Excluye órdenes con 'error_seguimiento' para no contaminar los estimadores con
+        telemetría incompleta, y verifica el umbral mínimo de muestras `n_min` (N_min).
         """
         instancias = self.session.query(InstanciaRed).filter_by(orden_id=orden_id).all()
         if any(inst.tipo_terminacion == 'error_seguimiento' for inst in instancias):
             logger.warning(f"🚫 Omitiendo calibración EWMA/EDR para orden {orden_id}: terminación con 'error_seguimiento' (telemetría incompleta).")
             return
 
-        logger.info(f"🧠 Iniciando bucle de aprendizaje EWMA para orden {orden_id}...")
+        # Verificar umbral mínimo de órdenes completadas válidas (N_min de la Sección VI.B)
+        if n_min > 1:
+            ordenes_completadas = self.session.query(OrdenProduccion).filter(
+                OrdenProduccion.estado == 'completada'
+            ).count()
+            if ordenes_completadas < n_min:
+                logger.info(f"⏳ Muestra acumulada ({ordenes_completadas}/{n_min}) menor a N_min; posponiendo actualización EWMA.")
+                return
+
+        logger.info(f"🧠 Iniciando bucle de aprendizaje EWMA (alfa={alfa}) para orden {orden_id}...")
         
         eventos = self.session.query(EventoRed).filter(
             EventoRed.orden_id == orden_id
@@ -834,25 +901,22 @@ class Orquestador:
                 continue
                 
             duracion_nominal = asig.duracion_estimada_min
-            if duracion_nominal <= 0.0:
-                continue
+            if duracion_nominal and duracion_nominal > 0.0:
+                # 1. Ecuación (12): Calibración de eficiencia temporal (tau_nom / tau_meas)
+                eficiencia_obs = duracion_nominal / duracion_real_min
+                eficiencia_obs = max(0.1, min(1.5, eficiencia_obs))
                 
-            # Calcular eficiencia observada en este lote
-            eficiencia_obs = duracion_nominal / duracion_real_min
-            eficiencia_obs = max(0.1, min(1.5, eficiencia_obs))
+                eficiencia_anterior = asig.eficiencia_real if asig.eficiencia_real is not None else 1.0
+                eficiencia_nueva = (alfa * eficiencia_obs) + ((1.0 - alfa) * eficiencia_anterior)
+                
+                asig.eficiencia_real = eficiencia_nueva
+                logger.info(f"   📈 Recurso '{recurso.nombre}' recalibrado en ruta (Ec. 12): eficiencia {eficiencia_anterior:.3f} → {eficiencia_nueva:.3f} (obs={eficiencia_obs:.3f})")
             
-            # Recalcular usando EWMA
-            alfa = 0.2
-            eficiencia_anterior = asig.eficiencia_real if asig.eficiencia_real is not None else 1.0
-            eficiencia_nueva = (alfa * eficiencia_obs) + ((1.0 - alfa) * eficiencia_anterior)
-            
-            asig.eficiencia_real = eficiencia_nueva
-            logger.info(f"   📈 Recurso '{recurso.nombre}' recalibrado en ruta: eficiencia {eficiencia_anterior:.3f} → {eficiencia_nueva:.3f} (obs={eficiencia_obs:.3f})")
-            
-            # Calibración opcional del EDR a nivel de Holón Recurso
+            mediciones = meta.get("mediciones", {}) or {}
             recurso_eq = recurso.equipo if (recurso and recurso.tipo == "equipo") else None
+
+            # 2. Ecuación (13) y (15): Calibración del Índice de Desviación Energética EDR(R)
             if recurso_eq and getattr(recurso_eq, 'medidor_energia', False):
-                mediciones = meta.get("mediciones", {})
                 energia_kwh_real = mediciones.get("energia_kwh")
                 if energia_kwh_real is not None:
                     try:
@@ -862,15 +926,42 @@ class Orquestador:
                         
                         if energia_nominal > 0.0:
                             edr_obs = energia_kwh_real / energia_nominal
-                            edr_obs = max(0.5, min(2.0, edr_obs))  # Límite de seguridad
+                            edr_obs = max(0.5, min(2.0, edr_obs))  # Límite de seguridad físico
                             
                             edr_anterior = recurso_eq.edr_actual if recurso_eq.edr_actual is not None else 1.0
                             edr_nuevo = (alfa * edr_obs) + ((1.0 - alfa) * edr_anterior)
                             
                             recurso_eq.edr_actual = edr_nuevo
-                            logger.info(f"   ⚡ Holón Recurso '{recurso.nombre}' recalibrado: EDR {edr_anterior:.3f} → {edr_nuevo:.3f} (obs={edr_obs:.3f}, real={energia_kwh_real:.3f} kWh, nom={energia_nominal:.3f} kWh)")
+                            logger.info(f"   ⚡ Holón Recurso '{recurso.nombre}' recalibrado (Ec. 13): EDR {edr_anterior:.3f} → {edr_nuevo:.3f} (obs={edr_obs:.3f}, real={energia_kwh_real:.3f} kWh, nom={energia_nominal:.3f} kWh)")
                     except (ValueError, TypeError) as e:
                         logger.error(f"❌ Error al calcular EDR para recurso {recurso.nombre}: {e}")
+
+            # 3. Ecuación (14): Calibración del factor de rendimiento másico gamma_{k+1}(p, R)
+            gamma_obs = None
+            if "rendimiento_gamma" in mediciones and mediciones["rendimiento_gamma"] is not None:
+                try:
+                    gamma_obs = float(mediciones["rendimiento_gamma"])
+                except (ValueError, TypeError):
+                    gamma_obs = None
+            elif "masa_entrada" in mediciones and "masa_salida" in mediciones:
+                try:
+                    m_in = float(mediciones["masa_entrada"])
+                    m_out = float(mediciones["masa_salida"])
+                    if m_in > 0:
+                        gamma_obs = m_out / m_in
+                except (ValueError, TypeError):
+                    gamma_obs = None
+
+            if gamma_obs is not None and 0.0 < gamma_obs <= 1.0:
+                gamma_obs = max(0.5, min(1.0, gamma_obs))
+                gamma_ant = getattr(asig, 'rendimiento_gamma', None)
+                if gamma_ant is None or gamma_ant <= 0.0:
+                    gamma_ant = getattr(recurso_eq, 'rendimiento_nominal', 1.0) if recurso_eq else 1.0
+                gamma_nuevo = (alfa * gamma_obs) + ((1.0 - alfa) * gamma_ant)
+                asig.rendimiento_gamma = gamma_nuevo
+                if recurso_eq and getattr(recurso_eq, 'rendimiento_nominal', None) is not None:
+                    recurso_eq.rendimiento_nominal = gamma_nuevo
+                logger.info(f"   ⚖️ Rendimiento másico '{recurso.nombre}' recalibrado (Ec. 14): gamma {gamma_ant:.4f} → {gamma_nuevo:.4f} (obs={gamma_obs:.4f})")
             
         self.session.commit()
 
@@ -1271,8 +1362,10 @@ class Orquestador:
 
     def _obtener_costo_hora_recurso(self, orden_id: int, red_nombre: str, recurso_nombre_o_id: str) -> float:
         """
-        Calcula la tasa horaria combinada ABC para el recurso:
-        tasa = (kappa * u + omega + delta + mu) * EDR
+        Calcula la tasa horaria combinada ABC Phi(p, R) para el recurso (Ecuaciones 6 y 15):
+            Phi(p, R) = kappa_R^eff + omega_R + delta_R + mu_R
+        donde kappa_R^eff = EDR(R) * kappa(R), siendo EDR(R) aplicado únicamente
+        al componente energético cuando el recurso cuenta con medidor de energía.
         """
         orden = self.session.query(OrdenProduccion).get(orden_id)
         if not orden or not orden.holon_ruta_id:
@@ -1293,26 +1386,27 @@ class Orquestador:
             AsignacionRecurso.recurso_id == recurso.id
         ).first()
         
-        costo_mano_obra = asignacion.costo_por_hora_real if asignacion else 0.0
+        costo_mano_obra = (asignacion.costo_por_hora_real or 0.0) if asignacion else 0.0
         
-        # Costos de máquina si es equipo
+        # Costos de máquina si es equipo (kappa_R^eff, delta_R, mu_R)
         recurso_eq = recurso.equipo
         costo_energia = 0.0
         costo_depreciacion = 0.0
+        costo_overhead = 12.0
         edr = 1.0
         
         if recurso_eq:
             consumo_kw = recurso_eq.consumo_energia_kw or 0.0
             costo_kwh = recurso_eq.costo_energia_por_kwh or 0.0
             costo_depreciacion = recurso_eq.costo_depreciacion_hora or 0.0
+            if getattr(recurso_eq, 'costo_overhead_hora', None) is not None:
+                costo_overhead = float(recurso_eq.costo_overhead_hora)
             if getattr(recurso_eq, 'medidor_energia', False):
                 edr = getattr(recurso_eq, 'edr_actual', 1.0) or 1.0
+            # Ecuación (15): kappa_R^eff = EDR(R) * kappa(R)
             costo_energia = (consumo_kw * costo_kwh) * edr
-            costo_depreciacion *= edr
             
-        # Overhead de gestión estimado (mu)
-        costo_overhead = 12.0
-        
-        tasa_total = costo_mano_obra + costo_energia + costo_depreciacion + costo_overhead
+        tasa_total = costo_energia + costo_mano_obra + costo_depreciacion + costo_overhead
         return tasa_total
+
     
