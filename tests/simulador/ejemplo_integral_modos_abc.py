@@ -424,10 +424,26 @@ def ejecutar_ejemplo_integral():
         sess["usuario_nombre"] = "Ing. Planta PyME"
         sess["usuario_rol"] = "admin"
 
-    # Helper para que los conectores Modo B (SCADA) y Modo C (Edge RPi+Arduino) publiquen al cliente Flask
+    # Helper para que los conectores Modo B (SCADA) y Modo C (Edge RPi+Arduino) publiquen
+    # a través del puerto exclusivo de la Red Aislada de Planta (OT :5001)
     def post_local(ruta: str, payload: dict) -> dict:
-        resp = client.post(ruta, json=payload)
+        resp = client.post(
+            ruta,
+            json=payload,
+            base_url="http://10.10.20.1:5001",
+            headers={"X-Fenix-Zone": "OT"}
+        )
         return resp.get_json()
+
+    # Verificar que desde el puerto de la Red Aislada de Planta (OT :5001) se bloquea
+    # cualquier intento de acceder a interfaces empresariales IT (/planificador o /mes)
+    resp_intruso_ot = client.get(
+        "/planificador",
+        base_url="http://10.10.20.1:5001",
+        headers={"X-Fenix-Zone": "OT"}
+    )
+    assert resp_intruso_ot.status_code == 403, f"El puerto OT (:5001) debió bloquear /planificador con 403, código={resp_intruso_ot.status_code}"
+    print("  [Seguridad OT/IT OK] Puerto OT (:5001) aísla la red de borde y bloquea rutas de negocio IT (HTTP 403)")
 
     # PASO 6 de Ruta de Carga: Verificar Semáforo Pre-Producción en el Centro de Control MES
     resp_mes_ini = client.get("/mes/api/resumen").get_json()

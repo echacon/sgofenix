@@ -58,10 +58,14 @@ class NodoEdgeRaspberryArduino:
 
     def __init__(
         self,
-        url_base_fenix: str = "http://localhost:5000",
+        url_base_fenix: str = "http://10.10.20.1:5001",
         umbral_corriente_operacion_a: float = 2.5,
         cliente_local_post: Optional[Callable[[str, Dict[str, Any]], Dict[str, Any]]] = None
     ):
+        """
+        Por defecto apunta al puerto exclusivo de la Red Aislada de Planta (OT :5001)
+        en la interfaz de borde del servidor Fénix (ej. 10.10.20.1:5001).
+        """
         self.url_endpoint = f"{url_base_fenix.rstrip('/')}/api/ingesta/evento_planta"
         self.umbral_corriente_a = umbral_corriente_operacion_a
         self.cliente_local_post = cliente_local_post
@@ -198,7 +202,10 @@ class NodoEdgeRaspberryArduino:
         req = urllib.request.Request(
             self.url_endpoint,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "X-Fenix-Zone": "OT"
+            },
             method="POST"
         )
         try:

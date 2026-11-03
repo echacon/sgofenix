@@ -50,9 +50,13 @@ class ConectorSCADAFenix:
 
     def __init__(
         self,
-        url_base_fenix: str = "http://localhost:5000",
+        url_base_fenix: str = "http://10.10.20.1:5001",
         cliente_local_post: Optional[Callable[[str, Dict[str, Any]], Dict[str, Any]]] = None
     ):
+        """
+        Por defecto apunta al puerto OT aislado del servidor Fénix (:5001 en la subred segura
+        de planta 10.10.20.0/24), separado del puerto de la red empresarial IT (:5000).
+        """
         self.url_endpoint = f"{url_base_fenix.rstrip('/')}/api/ingesta/evento_planta"
         self.cliente_local_post = cliente_local_post
         self.mapeos: Dict[str, MapeoTagSCADA] = {}
@@ -121,7 +125,10 @@ class ConectorSCADAFenix:
         req = urllib.request.Request(
             self.url_endpoint,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "X-Fenix-Zone": "OT"
+            },
             method="POST"
         )
         try:

@@ -68,6 +68,58 @@ app.register_blueprint(planificador_bp)
 app.register_blueprint(aprendizaje_bp)
 app.register_blueprint(mes_bp)
 
+# ==================== SEGMENTACIÓN DE RED OT / IT (ISA/IEC 62443) ====================
+# El servidor FÉNIX actúa como puente seguro entre dos redes separadas:
+#   1. Red Empresarial / Negocio (IT - Puerto por defecto 5000):
+#      Acceso a Planificación ABC (/planificador), Centro MES (/mes), Cargas (/cargas/validar)
+#      y Lazo de Aprendizaje (/aprendizaje).
+#   2. Red Aislada de Piso de Planta / Borde (OT - Puerto por defecto 5001):
+#      Red segura donde residen los nodos Arduino+Raspberry Pi (Modo C), PLCs/SCADA (Modo B)
+#      y Tablets de Operador (Modo A). En este puerto se aplica una lista blanca estricta:
+#      solo se permite el acceso a la pasarela de ingesta (/api/ingesta/*) y operación (/operador*).
+app.config['FENIX_IT_HOST'] = os.environ.get('FENIX_IT_HOST', '0.0.0.0')
+app.config['FENIX_IT_PORT'] = int(os.environ.get('FENIX_IT_PORT', '5000'))
+app.config['FENIX_OT_HOST'] = os.environ.get('FENIX_OT_HOST', '0.0.0.0')
+app.config['FENIX_OT_PORT'] = int(os.environ.get('FENIX_OT_PORT', '5001'))
+
+PREFIJOS_PERMITIDOS_RED_OT = (
+    '/api/ingesta/',
+    '/api/orden/',
+    '/operador',
+    '/login',
+    '/logout',
+    '/static/'
+)
+
+
+@app.before_request
+def verificar_aislamiento_red_ot():
+    """
+    Política de seguridad perimetral OT/IT:
+    Si la petición ingresa por el puerto exclusivo de la Red Aislada de Planta (OT, ej. :5001)
+    o incluye la cabecera X-Fenix-Zone: OT, bloquea cualquier acceso a las interfaces
+    administrativas, de planificación financiera o de modificación de ontología.
+    """
+    puerto_ot = str(current_app_ot_port := app.config.get('FENIX_OT_PORT', 5001))
+    host_header = request.host or ''
+    zona_header = (request.headers.get('X-Fenix-Zone') or '').upper()
+    es_canal_ot = host_header.endswith(f':{puerto_ot}') or zona_header == 'OT'
+
+    if es_canal_ot:
+        ruta = request.path or '/'
+        if ruta == '/':
+            return redirect(url_for('operador.dashboard'))
+        if not any(ruta.startswith(pref) for pref in PREFIJOS_PERMITIDOS_RED_OT):
+            return jsonify({
+                'success': False,
+                'error': (
+                    f'Acceso bloqueado por política de aislamiento OT/IT (ISA/IEC 62443): '
+                    f'La ruta "{ruta}" pertenece a la Red de Empresa (IT) y no está expuesta '
+                    f'en el puerto de la Red Aislada de Planta (OT :{puerto_ot}).'
+                )
+            }), 403
+
+
 # ==================== RUTAS PRINCIPALES ====================
 @app.route('/')
 def index():
@@ -233,11 +285,24 @@ def cargar_red():
     # ...
 
 
-# ==================== INICIO ====================
+# ==================== INICIO DUAL-PORT (RED IT + RED AISLADA OT) ====================
 if __name__ == '__main__':
-    # Cargar datos iniciales si es necesario (podría llamar a init_prueba.main() una vez)
-    # Pero no queremos ejecutar init_prueba cada vez que arranca la app.
-    print("🚀 Iniciando servidor web FÉNIX")
-    print("   El orquestador principal debe correr en otro proceso (main.py)")
-    print("   Los eventos se encolan en BD y son procesados por main.py")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    import threading
+    from werkzeug.serving import make_server
+
+    it_host = app.config['FENIX_IT_HOST']
+    it_port = app.config['FENIX_IT_PORT']
+    ot_host = app.config['FENIX_OT_HOST']
+    ot_port = app.config['FENIX_OT_PORT']
+    habilitar_ot = os.environ.get('FENIX_HABILITAR_PUERTO_OT', '1') == '1'
+
+    print("🚀 Iniciando Servidor Central FÉNIX con Segmentación de Red OT / IT")
+    print(f"   🏢 Puerto hacia Red de Empresa (IT)        : http://{it_host}:{it_port}  (/mes, /planificador, /cargas, /aprendizaje)")
+
+    if habilitar_ot and ot_port != it_port:
+        servidor_ot = make_server(ot_host, ot_port, app, threaded=True)
+        hilo_ot = threading.Thread(target=servidor_ot.serve_forever, daemon=True)
+        hilo_ot.start()
+        print(f"   🛡️  Puerto hacia Red Aislada de Planta (OT) : http://{ot_host}:{ot_port}  (SOLO /api/ingesta/evento_planta y /operador)")
+
+    app.run(debug=False, host=it_host, port=it_port, threaded=True)

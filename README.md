@@ -29,19 +29,21 @@ python tests/simulador/ejemplo_integral_modos_abc.py
 python tools/carga/init_db.py
 ```
 
-## ▶️ Ejecución
+## ▶️ Ejecución y Segmentación de Red OT / IT
 
 ```bash
-# Iniciar el Servidor Web, Centro de Control MES y Pasarela Unificada de Ingesta (:5000)
+# Iniciar el Servidor Central Fénix (levanta simultáneamente el puerto IT :5000 y el puerto OT aislado :5001)
 python web/app.py
 ```
 
-Una vez iniciado, abre `http://localhost:5000` en tu navegador:
-- **Centro de Control Ejecutivo MES**: `http://localhost:5000/mes`
-- **Semáforo Pre-Producción & Validador YAML**: `http://localhost:5000/cargas/validar`
-- **Planificador y Cotizador Dinámico ABC (Algoritmo 1)**: `http://localhost:5000/planificador`
-- **Panel de Operación en Planta (Tablet Operador)**: `http://localhost:5000/operador`
-- **Lazo de Aprendizaje EWMA / EDR**: `http://localhost:5000/aprendizaje`
+En una instalación industrial, Fénix se conecta con doble interfaz hacia la **Red de la Empresa (IT)** y hacia la **Red Aislada de Piso de Planta (OT)**:
+- **Puerto hacia la Red de la Empresa (IT — `:5000`, ej. `http://192.168.1.50:5000`)**:
+  - **Centro de Control Ejecutivo MES**: `/mes`
+  - **Semáforo Pre-Producción & Validador YAML**: `/cargas/validar`
+  - **Planificador y Cotizador Dinámico ABC (Algoritmo 1)**: `/planificador`
+  - **Lazo de Aprendizaje EWMA / EDR**: `/aprendizaje`
+- **Puerto hacia la Red Aislada de Planta (OT — `:5001`, ej. `http://10.10.20.1:5001`)**:
+  - Restringido estrictamente por lista blanca perimetral a la **Pasarela de Ingesta de Borde** (`POST /api/ingesta/evento_planta`) y al **Panel de Operación en Planta** (`/operador`), bloqueando con `HTTP 403` cualquier acceso desde la red de borde a rutas financieras o administrativas.
 
 📘 **Para instrucciones detalladas de despliegue en red local, conexión de tablets, integración SCADA o cableado de nodos Arduino + Raspberry Pi, consulta el [`Manual_Instalacion_MOM.md`](Manual_Instalacion_MOM.md).**
 

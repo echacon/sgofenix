@@ -175,6 +175,11 @@ $$m_0 = \frac{q_n}{\prod_{i=1}^n \gamma(E_i, R_i)}$$
 ### 5.2. Resiliencia ante Pérdida de Eventos (*Tracking Error*)
 Si un lote sufre pérdida de eventos intermedios y llega la señal de cierre final, `forzar_cierre_por_error_seguimiento()` cierra ordenadamente las redes activas marcando `tipo_terminacion = 'error_seguimiento'`, lo cual **excluye automáticamente dicho lote del Bucle Lento EWMA/EDR** para proteger la integridad estadística de los parámetros maestros.
 
+### 5.3. Segmentación Perimetral de Red OT / IT (ISA/IEC 62443 para PyMEs)
+En despliegue industrial, los equipos de recolección de datos de borde (Gateways Raspberry Pi + Arduino en Modo C, servidores SCADA/PLC en Modo B y tablets de piso en Modo A) operan dentro de una **Red Aislada de Planta (Zona OT, ej. `10.10.20.0/24`)** sin acceso a la red corporativa ni a Internet. El servidor FÉNIX actúa como nodo frontera con puertos e interfaces diferenciadas en [`web/app.py`](file:///C:/Users/echac/Documents/gemini/sgofenix/web/app.py):
+- **Puerto hacia la Red Aislada de Planta (OT — `FENIX_OT_PORT=5001`)**: aplica un filtro de lista blanca a nivel de petición (`verificar_aislamiento_red_ot`) que expone exclusivamente la pasarela `POST /api/ingesta/evento_planta` y la vista operativa `/operador`, rechazando con `HTTP 403 Forbidden` cualquier solicitud hacia rutas de planificación, costos o administración.
+- **Puerto hacia la Red de la Empresa (IT — `FENIX_IT_PORT=5000`)**: expone hacia las oficinas técnicas y gerenciales el Centro de Control Ejecutivo MES (`/mes`), el Planificador y Cotizador ABC (`/planificador`), el Validador y Semáforo (`/cargas/validar`) y el panel del Lazo de Aprendizaje (`/aprendizaje`).
+
 ---
 
 ## 6. Mapeo de Componentes del Código Fuente
